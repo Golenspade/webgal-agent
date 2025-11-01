@@ -1,0 +1,17 @@
+{
+  "name": "webgal-agent-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "WebGAL Agent monorepo (workspaces)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "echo build:stub",
+    "dev": "echo dev:stub",
+    "lint": "echo lint:stub",
+    "test": "echo test:stub"
+  }
+}
+

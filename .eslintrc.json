@@ -1,0 +1,8 @@
+{
+  "root": true,
+  "env": { "es2021": true, "browser": true, "node": true },
+  "parserOptions": { "ecmaVersion": 2021, "sourceType": "module" },
+  "extends": [],
+  "rules": {}
+}
+

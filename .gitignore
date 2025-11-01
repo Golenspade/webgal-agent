@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.DS_Store
+.vite/
+.turbo/
+.parcel-cache/
+.nyc_output/
+coverage/
+.env*
+

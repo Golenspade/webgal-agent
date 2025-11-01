@@ -1,0 +1,19 @@
+{
+  "name": "@webgal-agent/agent-core",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./src/tools/index.ts",
+  "exports": {
+    ".": "./src/tools/index.ts",
+    "./tools": "./src/tools/index.ts",
+    "./tools/diff-snapshot": "./src/tools/diff-snapshot.ts",
+    "./types": "./src/types/index.d.ts"
+  },
+  "dependencies": {
+    "@webgal-agent/tool-bridge": "*",
+    "@types/node": "^20.0.0",
+    "glob": "^10.0.0"
+  }
+}
+

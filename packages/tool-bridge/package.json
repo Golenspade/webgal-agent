@@ -1,0 +1,14 @@
+{
+  "name": "@webgal-agent/tool-bridge",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@types/node": "^20.0.0"
+  }
+}
+

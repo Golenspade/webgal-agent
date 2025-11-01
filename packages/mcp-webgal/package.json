@@ -1,0 +1,7 @@
+{
+  "name": "@webgal-agent/mcp-webgal",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module"
+}
+

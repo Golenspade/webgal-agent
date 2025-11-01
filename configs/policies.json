@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "contractVersion": "1.0.0",
+  "mode": "cline",
+  "sandbox": {
+    "root": "${projectRoot}",
+    "forbiddenDirs": [".git", "node_modules", ".env"],
+    "maxReadBytes": 1048576,
+    "textEncoding": "utf-8"
+  },
+  "writes": {
+    "requireDiff": true,
+    "idempotency": true,
+    "newline": "preserve",
+    "atomicWrite": true,
+    "conflictStrategy": "fail",
+    "snapshotRetention": 20
+  },
+  "execution": {
+    "enabled": true,
+    "allowedCommands": ["dev", "build", "lint"],
+    "timeoutMs": 180000,
+    "workingDir": ".",
+    "redactEnv": ["API_KEY", "TOKEN", "SECRET"]
+  },
+  "browser": {
+    "enabled": true,
+    "allowedHosts": ["localhost", "127.0.0.1"],
+    "screenshotDir": "test-screenshots",
+    "timeoutMs": 30000
+  },
+  "models": {
+    "provider": "anthropic",
+    "model": "claude-3-5-sonnet-20241022",
+    "temperature": 0.4,
+    "maxTokens": 4000,
+    "truncate": {
+      "strategy": "preserve-protected",
+      "protectedMarkers": [
+        "## 可用背景",
+        "## 可用立绘",
+        "register:",
+        "label:"
+      ]
+    }
+  },
+  "hooks": {
+    "beforeActBatch": [
+      "list_project_resources",
+      "read_file:game/scene/start.txt?optional=true"
+    ],
+    "reorientOn": ["E_RESOURCE_MISSING", "E_PREVIEW_FAIL"]
+  },
+  "limits": {
+    "batchMaxLines": 2000,
+    "maxAutoFix": 1,
+    "rateLimit": {
+      "rpm": 30,
+      "burst": 10
+    }
+  },
+  "network": {
+    "llmOnly": true,
+    "outboundAllowList": ["api.anthropic.com", "api.openai.com"]
+  },
+  "telemetry": {
+    "enabled": false,
+    "localLogs": true,
+    "logLevel": "info"
+  }
+}
+

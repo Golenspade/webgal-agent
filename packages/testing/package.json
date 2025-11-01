@@ -1,0 +1,20 @@
+{
+  "name": "@webgal-agent/testing",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx src/all.test.ts",
+    "test:old": "node --import tsx src/tools.test.ts"
+  },
+  "dependencies": {
+    "@webgal-agent/agent-core": "*",
+    "@webgal-agent/tool-bridge": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.0.0"
+  }
+}
+

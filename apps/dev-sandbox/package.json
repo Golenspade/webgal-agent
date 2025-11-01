@@ -1,0 +1,10 @@
+{
+  "name": "@webgal-agent/dev-sandbox",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node ./src/index.ts"
+  }
+}
+
