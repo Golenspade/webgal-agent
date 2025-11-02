@@ -93,7 +93,7 @@ export class AgentBridge {
     ipcMain.handle('agent:writeDryRun', async (_event, args: {
       path: string;
       content: string;
-      mode?: 'create' | 'overwrite';
+      mode?: 'overwrite' | 'append';
     }) => {
       try {
         const result = await this.mcpManager.callTool('write_to_file', {
@@ -112,7 +112,7 @@ export class AgentBridge {
     ipcMain.handle('agent:writeApply', async (_event, args: {
       path: string;
       content: string;
-      mode?: 'create' | 'overwrite';
+      mode?: 'overwrite' | 'append';
       idempotencyKey?: string;
     }) => {
       try {
@@ -213,4 +213,3 @@ export class AgentBridge {
 
 // 导出单例
 export const agentBridge = new AgentBridge();
-

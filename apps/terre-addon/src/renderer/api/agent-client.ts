@@ -5,6 +5,16 @@
  */
 
 import type { McpStartOptions } from '../../main/mcp-process-manager.js';
+import type {
+  Diff,
+  ValidateScriptResponse,
+  ListProjectResourcesResponse,
+  ReadFileResponse,
+  SearchFilesResponse,
+  ReplaceInFileResponse,
+  WriteToFileResponse,
+  ListFilesResponse,
+} from '@webgal-agent/agent-core/types';
 
 // 类型定义（与 CONTRACTS.md 对齐）
 export interface ToolError {
@@ -17,62 +27,17 @@ export interface ToolError {
   };
 }
 
-export interface ListFilesResult {
-  entries: Array<{
-    name: string;
-    type: 'file' | 'directory';
-    size?: number;
-    modifiedAt?: string;
-  }>;
-}
+export type ListFilesResult = ListFilesResponse;
 
-export interface ReadFileResult {
-  content: string;
-  path: string;
-  size: number;
-  encoding: string;
-}
+export type ReadFileResult = ReadFileResponse;
 
-export interface WriteDryRunResult {
-  diff: {
-    type: 'create' | 'modify' | 'delete';
-    path: string;
-    before?: string;
-    after?: string;
-    hunks?: Array<{
-      oldStart: number;
-      oldLines: number;
-      newStart: number;
-      newLines: number;
-      lines: string[];
-    }>;
-  };
-  idempotencyKey: string;
-}
+export type WriteDryRunResult = { applied: false; diff: Diff };
 
-export interface WriteApplyResult {
-  path: string;
-  bytesWritten: number;
-  snapshotId: string;
-}
+export type WriteApplyResult = { applied: true; snapshotId: string; bytesWritten: number };
 
-export interface ValidateResult {
-  valid: boolean;
-  errors: Array<{
-    line: number;
-    type: 'syntax' | 'resource_missing' | 'unknown_command';
-    message: string;
-    suggestion?: string;
-  }>;
-}
+export type ValidateResult = ValidateScriptResponse;
 
-export interface ProjectResources {
-  backgrounds: string[];
-  figures: string[];
-  bgm: string[];
-  vocals: string[];
-  scenes: string[];
-}
+export type ProjectResources = ListProjectResourcesResponse;
 
 export interface AgentStatus {
   running: boolean;
@@ -134,7 +99,7 @@ export class AgentClient {
   async writeDryRun(args: {
     path: string;
     content: string;
-    mode?: 'create' | 'overwrite';
+    mode?: 'overwrite' | 'append';
   }): Promise<WriteDryRunResult> {
     const result = await this.invoke<WriteDryRunResult | ToolError>('agent:writeDryRun', args);
     if ('error' in result) {
@@ -149,7 +114,7 @@ export class AgentClient {
   async writeApply(args: {
     path: string;
     content: string;
-    mode?: 'create' | 'overwrite';
+    mode?: 'overwrite' | 'append';
     idempotencyKey?: string;
   }): Promise<WriteApplyResult> {
     const result = await this.invoke<WriteApplyResult | ToolError>('agent:writeApply', args);
@@ -167,8 +132,8 @@ export class AgentClient {
     find: string;
     replace: string;
     flags?: string;
-  }): Promise<{ count: number; preview: string[] }> {
-    const result = await this.invoke<any>('agent:replaceInFile', args);
+  }): Promise<ReplaceInFileResponse> {
+    const result = await this.invoke<ReplaceInFileResponse | ToolError>('agent:replaceInFile', args);
     if ('error' in result) {
       throw result.error;
     }
@@ -183,8 +148,8 @@ export class AgentClient {
     regex: string;
     filePattern?: string;
     maxMatches?: number;
-  }): Promise<{ matches: Array<{ file: string; line: number; preview: string }> }> {
-    const result = await this.invoke<any>('agent:searchFiles', args);
+  }): Promise<SearchFilesResponse> {
+    const result = await this.invoke<SearchFilesResponse | ToolError>('agent:searchFiles', args);
     if ('error' in result) {
       throw result.error;
     }
@@ -252,4 +217,3 @@ export class AgentClient {
 
 // 导出单例
 export const agentClient = new AgentClient();
-

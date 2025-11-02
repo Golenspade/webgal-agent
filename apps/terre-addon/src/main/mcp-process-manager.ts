@@ -216,8 +216,10 @@ export class McpProcessManager extends EventEmitter {
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(id, { resolve, reject });
 
-      const message = JSON.stringify(request) + '\n';
-      this.process!.stdin!.write(message);
+      // LSP-style framing with Content-Length header (required by MCP stdio)
+      const json = JSON.stringify(request);
+      const frame = `Content-Length: ${Buffer.byteLength(json, 'utf8')}\r\n\r\n${json}`;
+      this.process!.stdin!.write(frame);
 
       // 超时处理（30 秒）
       setTimeout(() => {
@@ -233,20 +235,33 @@ export class McpProcessManager extends EventEmitter {
    * 处理 stdout 数据
    */
   private handleStdout(data: Buffer) {
-    this.buffer += data.toString();
+    this.buffer += data.toString('utf8');
 
-    // 按行分割
-    const lines = this.buffer.split('\n');
-    this.buffer = lines.pop() || '';
+    // Parse LSP-style frames: headers (CRLF) + CRLF + body
+    while (true) {
+      const headerEnd = this.buffer.indexOf('\r\n\r\n');
+      if (headerEnd === -1) break; // need more data
 
-    for (const line of lines) {
-      if (!line.trim()) continue;
+      const headerText = this.buffer.slice(0, headerEnd);
+      const headers = headerText.split('\r\n');
+      let contentLength = 0;
+      for (const h of headers) {
+        const m = h.match(/^Content-Length:\s*(\d+)/i);
+        if (m) {
+          contentLength = parseInt(m[1], 10);
+        }
+      }
+      const totalNeeded = headerEnd + 4 + contentLength;
+      if (this.buffer.length < totalNeeded) break; // wait for full body
+
+      const body = this.buffer.slice(headerEnd + 4, totalNeeded);
+      this.buffer = this.buffer.slice(totalNeeded);
 
       try {
-        const response: JsonRpcResponse = JSON.parse(line);
+        const response: JsonRpcResponse = JSON.parse(body);
         this.handleResponse(response);
       } catch (e) {
-        console.error('[McpProcessManager] Failed to parse response:', line);
+        console.error('[McpProcessManager] Failed to parse JSON body:', body);
       }
     }
   }
@@ -324,4 +339,3 @@ export class McpProcessManager extends EventEmitter {
     return mcpDist;
   }
 }
-

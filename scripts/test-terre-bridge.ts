@@ -54,7 +54,7 @@ async function main() {
     
     // 调用工具：读取文件
     if (scenes.entries && scenes.entries.length > 0) {
-      const firstScene = scenes.entries[0].name;
+      const firstScene = scenes.entries[0];
       console.log(`\n调用工具: read_file (${firstScene})...`);
       const content = await manager.callTool('read_file', { path: `game/scene/${firstScene}` });
       console.log('✅ 文件内容长度:', content.content?.length || 0);
@@ -75,4 +75,3 @@ async function main() {
 }
 
 main();
-
