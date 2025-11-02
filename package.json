@@ -12,6 +12,8 @@
     "dev": "echo dev:stub",
     "lint": "echo lint:stub",
     "test": "echo test:stub"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
   }
 }
-
