@@ -169,7 +169,7 @@ export function mergeConfig(options: {
   const sandbox: Omit<SandboxConfig, 'projectRoot'> = {
     forbiddenDirs: cli.sandbox?.forbiddenDirs ?? policies?.sandbox?.forbiddenDirs ?? defaults.sandbox.forbiddenDirs,
     maxReadBytes: cli.sandbox?.maxReadBytes ?? policies?.sandbox?.maxReadBytes ?? defaults.sandbox.maxReadBytes,
-    textEncoding: cli.sandbox?.textEncoding ?? policies?.sandbox?.textEncoding ?? defaults.sandbox.textEncoding,
+    textEncoding: (cli.sandbox?.textEncoding ?? policies?.sandbox?.textEncoding ?? defaults.sandbox.textEncoding) as BufferEncoding,
   };
 
   // Execution 配置（仅在启用时返回）
