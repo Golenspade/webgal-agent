@@ -237,9 +237,8 @@ export class CommandExecutor {
       const timeout = setTimeout(() => {
         if (!resolved) {
           resolved = true;
-          if (!options.keepAlive) {
-            child.kill();
-          }
+          // 无论 keepAlive 与否，超时属于失败场景，必须清理子进程以免挂起测试进程
+          try { child.kill(); } catch {}
           reject({
             error: {
               code: ErrorCode.E_TIMEOUT,
@@ -274,9 +273,9 @@ export class CommandExecutor {
           resolved = true;
           clearTimeout(timeout);
 
-          // 如果不保持存活，杀掉进程
+          // 如果不保持存活，杀掉进程；保持存活时让调用方自行管理
           if (!options.keepAlive) {
-            child.kill();
+            try { child.kill(); } catch {}
           }
 
           resolve({
@@ -356,4 +355,3 @@ export class CommandExecutor {
     return { ...this.config };
   }
 }
-

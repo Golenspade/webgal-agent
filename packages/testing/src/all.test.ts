@@ -42,13 +42,11 @@ async function runAllTests() {
   console.log(`  总计: ${totalPassed} 通过, ${totalFailed} 失败`);
   console.log('═══════════════════════════════════════════════════════\n');
 
-  if (totalFailed > 0) {
-    process.exit(1);
-  }
+  // 无论成功或失败，都显式退出，避免遗留子进程/定时器导致进程悬挂
+  process.exit(totalFailed > 0 ? 1 : 0);
 }
 
 runAllTests().catch((err) => {
   console.error('测试运行失败:', err);
   process.exit(1);
 });
-
