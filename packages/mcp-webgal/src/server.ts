@@ -11,20 +11,18 @@ import {
   ListToolsRequestSchema,
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
-import { WebGALAgentTools } from '@webgal-agent/agent-core/tools/index';
-import { DEFAULT_SANDBOX_CONFIG } from '@webgal-agent/tool-bridge';
-import type { ToolError } from '@webgal-agent/agent-core/types/index';
+import { WebGALAgentTools } from '@webgal-agent/agent-core/tools';
+import type { ResolvedConfig } from './config.js';
 
-export interface ServerConfig {
+export interface ServerConfig extends ResolvedConfig {
   projectRoot: string;
   policiesPath?: string;
-  snapshotRetention?: number;
 }
 
 /**
  * 创建 MCP 服务器实例
  */
-export function createMCPServer(config: ServerConfig) {
+export async function createMCPServer(config: ServerConfig) {
   const server = new Server(
     {
       name: 'webgal-agent',
@@ -37,27 +35,16 @@ export function createMCPServer(config: ServerConfig) {
     }
   );
 
-  // 初始化 WebGAL Agent Tools
+  // 初始化 WebGAL Agent Tools（使用已合并的配置）
   const tools = new WebGALAgentTools({
     projectRoot: config.projectRoot,
     sandbox: {
-      ...DEFAULT_SANDBOX_CONFIG,
+      ...config.sandbox,
       projectRoot: config.projectRoot,
     },
-    execution: {
-      enabled: true,
-      allowedCommands: ['dev', 'build', 'lint'],
-      timeoutMs: 60000,
-      workingDir: config.projectRoot,
-      redactEnv: [],
-    },
-    browser: {
-      enabled: true,
-      allowedHosts: ['localhost', '127.0.0.1'],
-      screenshotDir: '.webgal_agent/screenshots',
-      timeoutMs: 30000,
-    },
-    snapshotRetention: config.snapshotRetention ?? 20,
+    execution: config.execution,
+    browser: config.browser,
+    snapshotRetention: config.snapshotRetention,
   });
 
   // 定义工具列表
@@ -99,6 +86,7 @@ export function createMCPServer(config: ServerConfig) {
         properties: {
           path: { type: 'string', description: '相对于项目根的文件路径' },
           content: { type: 'string', description: '文件内容' },
+          mode: { type: 'string', enum: ['overwrite', 'append'], description: '写入模式（默认 overwrite）' },
           dryRun: { type: 'boolean', description: 'true=仅返回 diff，false=实际写入' },
           idempotencyKey: { type: 'string', description: '幂等性键（可选）' },
         },
@@ -139,10 +127,11 @@ export function createMCPServer(config: ServerConfig) {
       inputSchema: {
         type: 'object',
         properties: {
+          path: { type: 'string', description: '脚本文件路径（可选，与 content 二选一）' },
           content: { type: 'string', description: 'WebGAL 脚本内容' },
           scenePath: { type: 'string', description: '场景文件路径（用于资源检查，可选）' },
         },
-        required: ['content'],
+        required: [],
       },
     },
     {
@@ -250,17 +239,21 @@ export function createMCPServer(config: ServerConfig) {
       };
     } catch (error: any) {
       // 统一错误处理：符合 CONTRACTS.md 错误模型
-      const toolError: ToolError = error.error || {
-        code: 'E_INTERNAL',
-        message: error.message || 'Internal error',
-        details: error.stack,
-      };
+      const toolError = (error && error.error)
+        ? error
+        : {
+            error: {
+              code: 'E_INTERNAL' as any,
+              message: error?.message || 'Internal error',
+              details: error?.stack,
+            },
+          };
 
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify({ error: toolError }, null, 2),
+            text: JSON.stringify(toolError, null, 2),
           },
         ],
         isError: true,
@@ -275,11 +268,10 @@ export function createMCPServer(config: ServerConfig) {
  * 启动 stdio 服务器
  */
 export async function startServer(config: ServerConfig) {
-  const server = createMCPServer(config);
+  const server = await createMCPServer(config);
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error(`WebGAL Agent MCP Server started`);
-  console.error(`Project root: ${config.projectRoot}`);
+  // 启动信息已在 bin.ts 中输出，这里仅保留协议层日志
+  console.error(`✅ MCP Server ready (stdio)`);
 }
-
