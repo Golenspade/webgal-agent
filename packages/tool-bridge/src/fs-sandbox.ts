@@ -136,7 +136,7 @@ export class FsSandbox {
           ErrorCode.E_TOO_LARGE,
           `File exceeds maximum size: ${stats.size} > ${this.config.maxReadBytes}`,
           { path: absolutePath, size: stats.size, maxSize: this.config.maxReadBytes },
-          'Try reading a smaller file or increase maxReadBytes limit'
+          `Try reading a smaller file or increase maxReadBytes (current: ${this.config.maxReadBytes})`
         );
       }
     } catch (err) {
@@ -179,4 +179,3 @@ export class FsSandbox {
     return { ...this.config };
   }
 }
-

@@ -132,7 +132,12 @@ export class SnapshotManager {
 
     // 2. 如果仍然超过 maxEntries，按时间戳排序并保留最新的
     if (validEntries.length > this.idempotencyConfig.maxEntries) {
-      validEntries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+      validEntries.sort((a, b) => {
+        const tdiff = b[1].timestamp - a[1].timestamp;
+        if (tdiff !== 0) return tdiff;
+        // 稳定性：时间相同按 key 降序，保证较新的 key（通常后写入）优先
+        return b[0].localeCompare(a[0]);
+      });
       validEntries.splice(this.idempotencyConfig.maxEntries);
     }
 
@@ -453,4 +458,3 @@ export function applyDiff(oldContent: string, diff: Diff): string {
 
   return newLines.join('\n');
 }
-

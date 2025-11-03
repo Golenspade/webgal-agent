@@ -17,6 +17,7 @@ import { checkLock } from './lock-manager.js';
 
 export interface ServerConfig extends ResolvedConfig {
   projectRoot: string;
+  policiesPath?: string;
 }
 
 /**
@@ -273,6 +274,7 @@ export async function createMCPServer(config: ServerConfig) {
               maxReadBytes: config.sandbox.maxReadBytes,
               textEncoding: config.sandbox.textEncoding,
             },
+            ...(config.policiesPath && { policiesPath: config.policiesPath }),
             ...(config.execution && {
               execution: {
                 enabled: true,

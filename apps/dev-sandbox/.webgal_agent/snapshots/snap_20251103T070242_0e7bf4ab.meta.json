@@ -1,0 +1,7 @@
+{
+  "id": "snap_20251103T070242_0e7bf4ab",
+  "path": "test2.txt",
+  "timestamp": 1762153362275,
+  "contentHash": "1b8707533d362a48d03c920654cb5ac752445f17ca8255fe50e615e344edcd55",
+  "idempotencyKey": "key-2"
+}

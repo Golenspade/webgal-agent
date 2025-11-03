@@ -210,6 +210,7 @@ async function main() {
 
     await startServer({
       projectRoot,
+      policiesPath,
       ...resolved,
     });
   } catch (error: any) {

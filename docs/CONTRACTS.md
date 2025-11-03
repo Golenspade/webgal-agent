@@ -639,6 +639,7 @@ const applyResult = await writeToFile({ path, content, dryRun: false });
   "type": "object",
   "properties": {
     "projectRoot": { "type": "string", "description": "项目根目录绝对路径" },
+    "policiesPath": { "type": "string", "description": "策略文件绝对路径（如果存在）" },
     "snapshotRetention": { "type": "integer", "minimum": 0, "description": "快照保留数量" },
     "sandbox": {
       "type": "object",
@@ -671,6 +672,18 @@ const applyResult = await writeToFile({ path, content, dryRun: false });
       },
       "required": ["enabled", "allowedHosts", "timeoutMs"]
     },
+    "lock": {
+      "type": "object",
+      "description": "当前运行时锁信息（如果存在）",
+      "properties": {
+        "owner": { "type": "string", "enum": ["cline", "terre", "manual"] },
+        "pid": { "type": "integer" },
+        "host": { "type": "string" },
+        "startedAt": { "type": "integer" },
+        "version": { "type": "string" }
+      },
+      "required": ["owner", "pid", "host", "startedAt", "version"]
+    },
     "tools": { "type": "array", "items": { "type": "string" }, "description": "当前注册的工具名称列表" },
     "server": {
       "type": "object",
@@ -689,14 +702,17 @@ const applyResult = await writeToFile({ path, content, dryRun: false });
 
 1. **敏感字段剔除**：不返回 `redactEnv`、密钥等敏感配置
 2. **条件字段**：`execution` 和 `browser` 仅在 `enabled: true` 时存在
-3. **工具列表**：`tools` 数组包含所有当前注册的 MCP 工具名称
-4. **版本格式**：`server.version` 遵循 semver 格式（如 `0.1.0`）
+3. **策略路径**：`policiesPath` 仅在通过 CLI/默认位置成功解析策略文件时返回
+4. **锁信息**：如果运行时持有锁（单实例），`lock` 字段将返回占用者/进程/时间等信息
+5. **工具列表**：`tools` 数组包含所有当前注册的 MCP 工具名称
+6. **版本格式**：`server.version` 遵循 semver 格式（如 `0.1.0`）
 
 **示例返回**
 
 ```json
 {
   "projectRoot": "/Users/user/projects/my-webgal-game",
+  "policiesPath": "/Users/user/projects/my-webgal-game/configs/policies.json",
   "snapshotRetention": 20,
   "sandbox": {
     "forbiddenDirs": ["node_modules", ".git"],
@@ -714,6 +730,13 @@ const applyResult = await writeToFile({ path, content, dryRun: false });
     "allowedHosts": ["localhost", "127.0.0.1"],
     "timeoutMs": 15000,
     "screenshotDir": ".webgal_agent/screenshots"
+  },
+  "lock": {
+    "owner": "cline",
+    "pid": 12345,
+    "host": "my-mac.local",
+    "startedAt": 1730611200000,
+    "version": "0.1.0"
   },
   "tools": [
     "list_files", "read_file", "write_to_file", "replace_in_file", "search_files",
@@ -987,4 +1010,3 @@ POST preview_scene {"scenePath":"game/scene/beach_date.txt"}
 ## 10. 变更日志（片段）
 
 * `1.0.0`：首版，覆盖 13 个工具；统一错误模型；Diff/快照/幂等；本地域/命令白名单。
-

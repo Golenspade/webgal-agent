@@ -277,7 +277,7 @@ export class FileSystemTools {
                 expectedHash,
                 currentHash,
               },
-              hint: 'Re-run with dryRun=true to get updated diff',
+              hint: 'Resolve conflict: 1) read_file to fetch latest content; 2) run write_to_file with dryRun=true to regenerate diff; 3) review changes; 4) apply when correct',
               recoverable: true,
             },
           };
@@ -329,6 +329,7 @@ export class FileSystemTools {
     try {
       // 读取文件
       const content = await fs.readFile(absolutePath, 'utf-8');
+      const baseHash = this.snapshotManager.computeHash(content);
 
       // 构建正则表达式
       let regex: RegExp;
@@ -353,9 +354,31 @@ export class FileSystemTools {
         return request.replace;
       });
 
-      // 写回文件
+      // 写回文件（并发安全：在写之前确认内容未改变）
       if (count > 0) {
-        await fs.writeFile(absolutePath, newContent, 'utf-8');
+        // 再次读取当前内容，检测是否发生并发修改
+        const current = await fs.readFile(absolutePath, 'utf-8').catch(() => content);
+        const currentHash = this.snapshotManager.computeHash(current);
+        if (currentHash !== baseHash) {
+          throw {
+            error: {
+              code: ErrorCode.E_CONFLICT,
+              message: 'File has been modified since replacement was prepared',
+              details: {
+                path: request.path,
+                expectedHash: baseHash,
+                currentHash,
+              },
+              hint: 'Resolve conflict: 1) read_file to fetch latest content; 2) adjust find/replace; 3) retry replace_in_file or use write_to_file dry-run flow',
+              recoverable: true,
+            },
+          };
+        }
+
+        // 原子写入：先写临时文件再重命名
+        const tempPath = `${absolutePath}.tmp`;
+        await fs.writeFile(tempPath, newContent, 'utf-8');
+        await fs.rename(tempPath, absolutePath);
       }
 
       return { count };

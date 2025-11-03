@@ -5,6 +5,10 @@
   "description": "运行时环境信息响应",
   "type": "object",
   "properties": {
+    "policiesPath": {
+      "type": "string",
+      "description": "策略文件的绝对路径（如果存在）"
+    },
     "projectRoot": {
       "type": "string",
       "description": "项目根目录绝对路径"
@@ -182,4 +186,3 @@
     }
   ]
 }
-
