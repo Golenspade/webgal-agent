@@ -139,6 +139,54 @@ export class SnapshotManager {
   }
 
   /**
+   * 列出快照
+   * @param options.limit - 最大返回数量（默认 50）
+   * @param options.path - 按路径过滤（startsWith 匹配）
+   */
+  async listSnapshots(options?: {
+    limit?: number;
+    path?: string;
+  }): Promise<SnapshotMetadata[]> {
+    const limit = options?.limit ?? 50;
+    const filterPath = options?.path;
+
+    try {
+      await this.initialize();
+      const files = await fs.readdir(this.snapshotDir);
+      const metaFiles = files.filter(f => f.endsWith('.meta.json'));
+
+      // 读取所有元数据
+      const snapshots: SnapshotMetadata[] = [];
+      for (const metaFile of metaFiles) {
+        try {
+          const metaPath = path.join(this.snapshotDir, metaFile);
+          const content = await fs.readFile(metaPath, 'utf-8');
+          const metadata: SnapshotMetadata = JSON.parse(content);
+
+          // 路径过滤
+          if (filterPath && !metadata.path.startsWith(filterPath)) {
+            continue;
+          }
+
+          snapshots.push(metadata);
+        } catch (err) {
+          // 跳过损坏的元数据文件
+          console.warn(`Failed to read snapshot metadata: ${metaFile}`, err);
+        }
+      }
+
+      // 按时间降序排序
+      snapshots.sort((a, b) => b.timestamp - a.timestamp);
+
+      // 限制返回数量
+      return snapshots.slice(0, limit);
+    } catch (err) {
+      // 目录不存在或读取失败，返回空数组
+      return [];
+    }
+  }
+
+  /**
    * 恢复快照
    */
   async restoreSnapshot(snapshotId: string): Promise<{ path: string; content: string }> {

@@ -16,7 +16,6 @@ import type { ResolvedConfig } from './config.js';
 
 export interface ServerConfig extends ResolvedConfig {
   projectRoot: string;
-  policiesPath?: string;
 }
 
 /**
@@ -148,6 +147,28 @@ export async function createMCPServer(config: ServerConfig) {
       },
     },
     {
+      name: 'list_snapshots',
+      description: '列出快照（按时间降序）',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: '最大返回数量（默认 50）' },
+          path: { type: 'string', description: '按路径过滤（startsWith 匹配）' },
+        },
+      },
+    },
+    {
+      name: 'restore_snapshot',
+      description: '恢复快照内容',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          snapshotId: { type: 'string', description: '快照 ID' },
+        },
+        required: ['snapshotId'],
+      },
+    },
+    {
       name: 'preview_scene',
       description: '启动 dev 服务器并返回场景预览 URL',
       inputSchema: {
@@ -215,6 +236,12 @@ export async function createMCPServer(config: ServerConfig) {
           break;
         case 'list_project_resources':
           result = await tools.listProjectResources();
+          break;
+        case 'list_snapshots':
+          result = await tools.listSnapshots(args as any);
+          break;
+        case 'restore_snapshot':
+          result = await tools.restoreSnapshot(args as any);
           break;
         case 'preview_scene':
           result = await tools.previewScene(args as any);

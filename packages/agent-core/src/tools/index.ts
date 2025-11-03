@@ -28,6 +28,10 @@ import type {
   ValidateScriptRequest,
   ValidateScriptResponse,
   ListProjectResourcesResponse,
+  ListSnapshotsRequest,
+  ListSnapshotsResponse,
+  RestoreSnapshotRequest,
+  RestoreSnapshotResponse,
   PreviewSceneRequest,
   PreviewSceneResponse,
   AskFollowupQuestionRequest,
@@ -132,6 +136,16 @@ export class WebGALAgentTools {
 
   async previewScene(request: PreviewSceneRequest): Promise<PreviewSceneResponse> {
     return this.webgalTools.previewScene(request);
+  }
+
+  // ============ 快照工具 ============
+
+  async listSnapshots(request: ListSnapshotsRequest): Promise<ListSnapshotsResponse> {
+    return this.fsTools.listSnapshots(request);
+  }
+
+  async restoreSnapshot(request: RestoreSnapshotRequest): Promise<RestoreSnapshotResponse> {
+    return this.fsTools.restoreSnapshot(request);
   }
 
   // ============ 交互工具 ============

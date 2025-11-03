@@ -19,6 +19,10 @@ import type {
   SearchFilesRequest,
   SearchFilesResponse,
   SearchMatch,
+  ListSnapshotsRequest,
+  ListSnapshotsResponse,
+  RestoreSnapshotRequest,
+  RestoreSnapshotResponse,
 } from '../types/index.js';
 
 /**
@@ -463,6 +467,59 @@ export class FileSystemTools {
           code: ErrorCode.E_IO,
           message: `Failed to search files: ${(err as Error).message}`,
           details: { path: request.path },
+          recoverable: false,
+        },
+      };
+    }
+  }
+
+  /**
+   * 列出快照
+   */
+  async listSnapshots(request: ListSnapshotsRequest): Promise<ListSnapshotsResponse> {
+    try {
+      const snapshots = await this.snapshotManager.listSnapshots({
+        limit: request.limit,
+        path: request.path,
+      });
+
+      return { snapshots };
+    } catch (err) {
+      throw {
+        error: {
+          code: ErrorCode.E_INTERNAL,
+          message: `Failed to list snapshots: ${(err as Error).message}`,
+          recoverable: false,
+        },
+      };
+    }
+  }
+
+  /**
+   * 恢复快照
+   */
+  async restoreSnapshot(request: RestoreSnapshotRequest): Promise<RestoreSnapshotResponse> {
+    try {
+      const result = await this.snapshotManager.restoreSnapshot(request.snapshotId);
+      return result;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw {
+          error: {
+            code: ErrorCode.E_NOT_FOUND,
+            message: `Snapshot not found: ${request.snapshotId}`,
+            details: { snapshotId: request.snapshotId },
+            hint: 'The snapshot may have been cleaned up or never existed',
+            recoverable: true,
+          },
+        };
+      }
+
+      throw {
+        error: {
+          code: ErrorCode.E_INTERNAL,
+          message: `Failed to restore snapshot: ${(err as Error).message}`,
+          details: { snapshotId: request.snapshotId },
           recoverable: false,
         },
       };

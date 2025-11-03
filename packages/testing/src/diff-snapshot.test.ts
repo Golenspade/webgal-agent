@@ -157,5 +157,104 @@ runner.test('SnapshotManager: should store metadata', async () => {
   }
 });
 
+runner.test('SnapshotManager: should list snapshots in descending order', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    const manager = new SnapshotManager(projectRoot, 20);
+
+    // 创建 3 个快照（有时间间隔）
+    const id1 = await manager.saveSnapshot('test1.txt', 'content1', 'key1');
+    await new Promise(resolve => setTimeout(resolve, 10)); // 等待 10ms
+    const id2 = await manager.saveSnapshot('test2.txt', 'content2', 'key2');
+    await new Promise(resolve => setTimeout(resolve, 10));
+    const id3 = await manager.saveSnapshot('test3.txt', 'content3', 'key3');
+
+    const snapshots = await manager.listSnapshots();
+
+    assertEqual(snapshots.length, 3, 'should have 3 snapshots');
+    // 按时间降序：最新的在前
+    assertEqual(snapshots[0].id, id3, 'newest snapshot should be first');
+    assertEqual(snapshots[1].id, id2, 'middle snapshot should be second');
+    assertEqual(snapshots[2].id, id1, 'oldest snapshot should be last');
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
+runner.test('SnapshotManager: should respect limit parameter', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    const manager = new SnapshotManager(projectRoot, 20);
+
+    // 创建 5 个快照
+    for (let i = 0; i < 5; i++) {
+      await manager.saveSnapshot(`test${i}.txt`, `content${i}`, `key${i}`);
+      await new Promise(resolve => setTimeout(resolve, 5));
+    }
+
+    const snapshots = await manager.listSnapshots({ limit: 3 });
+
+    assertEqual(snapshots.length, 3, 'should only return 3 snapshots');
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
+runner.test('SnapshotManager: should filter by path', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    const manager = new SnapshotManager(projectRoot, 20);
+
+    // 创建不同路径的快照
+    await manager.saveSnapshot('game/scene/start.txt', 'content1', 'key1');
+    await manager.saveSnapshot('game/scene/chapter1.txt', 'content2', 'key2');
+    await manager.saveSnapshot('game/config.json', 'content3', 'key3');
+
+    const sceneSnapshots = await manager.listSnapshots({ path: 'game/scene' });
+
+    assertEqual(sceneSnapshots.length, 2, 'should only return scene snapshots');
+    assert(sceneSnapshots.every(s => s.path.startsWith('game/scene')), 'all paths should start with game/scene');
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
+runner.test('SnapshotManager: should return empty array when no snapshots', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    const manager = new SnapshotManager(projectRoot, 20);
+
+    const snapshots = await manager.listSnapshots();
+
+    assertEqual(snapshots.length, 0, 'should return empty array');
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
+runner.test('SnapshotManager: should handle restore of non-existent snapshot', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    const manager = new SnapshotManager(projectRoot, 20);
+
+    let errorThrown = false;
+    try {
+      await manager.restoreSnapshot('snap_20231201T120000_nonexist');
+    } catch (err) {
+      errorThrown = true;
+      assert((err as NodeJS.ErrnoException).code === 'ENOENT', 'should throw ENOENT error');
+    }
+
+    assert(errorThrown, 'should throw error for non-existent snapshot');
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
 export { runner };
 

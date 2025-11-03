@@ -3,19 +3,43 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "./src/tools/index.ts",
+  "main": "./dist/tools/index.js",
+  "types": "./dist/tools/index.d.ts",
   "exports": {
-    ".": "./src/tools/index.ts",
-    "./tools": "./src/tools/index.ts",
-    "./tools/index": "./src/tools/index.ts",
-    "./tools/diff-snapshot": "./src/tools/diff-snapshot.ts",
-    "./types": "./src/types/index.d.ts",
-    "./types/index": "./src/types/index.d.ts"
+    ".": {
+      "types": "./dist/tools/index.d.ts",
+      "default": "./dist/tools/index.js"
+    },
+    "./tools": {
+      "types": "./dist/tools/index.d.ts",
+      "default": "./dist/tools/index.js"
+    },
+    "./tools/index": {
+      "types": "./dist/tools/index.d.ts",
+      "default": "./dist/tools/index.js"
+    },
+    "./tools/diff-snapshot": {
+      "types": "./dist/tools/diff-snapshot.d.ts",
+      "default": "./dist/tools/diff-snapshot.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts"
+    },
+    "./types/index": {
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@webgal-agent/tool-bridge": "*",
     "@types/node": "^20.0.0",
     "glob": "^10.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
   }
 }
 

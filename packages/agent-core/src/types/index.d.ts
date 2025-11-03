@@ -147,7 +147,39 @@ export interface ValidateScriptResponse {
 }
 
 /**
- * 2.3 preview_scene
+ * 2.3 list_snapshots
+ */
+export interface ListSnapshotsRequest {
+  limit?: number;
+  path?: string;
+}
+
+export interface SnapshotMetadata {
+  id: string;
+  path: string;
+  timestamp: number;
+  contentHash: string;
+  idempotencyKey?: string;
+}
+
+export interface ListSnapshotsResponse {
+  snapshots: SnapshotMetadata[];
+}
+
+/**
+ * 2.4 restore_snapshot
+ */
+export interface RestoreSnapshotRequest {
+  snapshotId: string;
+}
+
+export interface RestoreSnapshotResponse {
+  path: string;
+  content: string;
+}
+
+/**
+ * 2.5 preview_scene
  */
 export interface PreviewSceneRequest {
   scenePath?: string;
@@ -160,7 +192,7 @@ export interface PreviewSceneResponse {
 }
 
 /**
- * 2.4 generate_character_profile
+ * 2.6 generate_character_profile
  */
 export interface GenerateCharacterProfileRequest {
   name: string;
