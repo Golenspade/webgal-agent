@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RestoreSnapshotResponse",
+  "description": "恢复快照响应",
+  "type": "object",
+  "required": ["path", "content"],
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "文件路径（POSIX 格式，相对于项目根）",
+      "examples": ["game/scene/start.txt"]
+    },
+    "content": {
+      "type": "string",
+      "description": "文件内容（UTF-8 编码）",
+      "examples": ["changeBg: beach.jpg -next;\n雪乃: 你好;\n"]
+    }
+  }
+}
+

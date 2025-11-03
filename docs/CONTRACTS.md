@@ -449,6 +449,171 @@
 
 ---
 
+### 2.4 `list_snapshots`
+
+**用途**：列出快照（按时间降序），支持过滤和限制数量
+
+**Request**
+
+```json
+{
+  "$id": "list_snapshots.request",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "limit": {
+      "type": "number",
+      "description": "最大返回数量（默认 50，最大 1000）。负数/NaN 会被规范化为 50",
+      "default": 50,
+      "minimum": 0,
+      "maximum": 1000
+    },
+    "path": {
+      "type": "string",
+      "description": "按路径过滤（POSIX 格式前缀匹配，如 'game/scene'）"
+    }
+  }
+}
+```
+
+**Response**
+
+```json
+{
+  "$id": "list_snapshots.response",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "snapshots": {
+      "type": "array",
+      "description": "快照元数据数组（按时间降序，timestamp 相同时按 id 降序）",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "快照 ID（格式：snap_YYYYMMDDThhmmss_<8hex>）",
+            "pattern": "^snap_\\d{8}T\\d{6}_[0-9a-f]{8}$"
+          },
+          "path": {
+            "type": "string",
+            "description": "文件路径（POSIX 格式，相对于项目根）"
+          },
+          "timestamp": {
+            "type": "number",
+            "description": "创建时间戳（毫秒）"
+          },
+          "contentHash": {
+            "type": "string",
+            "description": "内容 SHA-256 哈希（前 8 位）",
+            "pattern": "^[0-9a-f]{8}$"
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "description": "幂等性键（可选）"
+          }
+        },
+        "required": ["id", "path", "timestamp", "contentHash"]
+      }
+    }
+  },
+  "required": ["snapshots"]
+}
+```
+
+**语义与约束**
+
+* **排序**：按 `timestamp` 降序（最新的在前），timestamp 相同时按 `id` 降序（稳定性）
+* **过滤**：`path` 参数使用 POSIX 格式前缀匹配（`startsWith`），大小写敏感
+* **限制**：`limit` 在过滤后应用，负数/NaN 会被规范化为默认值 50
+* **健壮性**：跳过损坏的 `.meta.json` 文件和缺少对应 `.txt` 文件的快照
+* **空结果**：目录不存在或无快照时返回空数组 `{ snapshots: [] }`
+
+**可能错误**：`E_BAD_ARGS`（参数类型错误）、`E_INTERNAL`（IO 失败）
+
+---
+
+### 2.5 `restore_snapshot`
+
+**用途**：恢复快照内容（用于预览 Diff 或实际恢复）
+
+**Request**
+
+```json
+{
+  "$id": "restore_snapshot.request",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "snapshotId": {
+      "type": "string",
+      "description": "快照 ID（格式：snap_YYYYMMDDThhmmss_<8hex>）",
+      "pattern": "^snap_\\d{8}T\\d{6}_[0-9a-f]{8}$"
+    }
+  },
+  "required": ["snapshotId"]
+}
+```
+
+**Response**
+
+```json
+{
+  "$id": "restore_snapshot.response",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "文件路径（POSIX 格式，相对于项目根）"
+    },
+    "content": {
+      "type": "string",
+      "description": "文件内容（UTF-8 编码）"
+    }
+  },
+  "required": ["path", "content"]
+}
+```
+
+**语义与约束**
+
+* **格式验证**：`snapshotId` 必须匹配格式 `snap_YYYYMMDDThhmmss_<8hex>`
+* **文件完整性**：同时检查 `.txt` 和 `.meta.json` 文件是否存在
+* **恢复流程**：通常先调用 `write_to_file` 的 `dryRun: true` 预览 Diff，用户确认后再 `dryRun: false` 应用
+
+**可能错误**
+
+* `E_BAD_ARGS`：snapshotId 为空、类型错误或格式不匹配
+* `E_NOT_FOUND`：快照不存在（文件已被清理或从未存在）
+* `E_PARSE_FAIL`：快照元数据损坏（JSON 解析失败）
+* `E_INTERNAL`：IO 失败
+
+**示例工作流**
+
+```javascript
+// 1. 列出快照
+const { snapshots } = await listSnapshots({ path: 'game/scene', limit: 10 });
+
+// 2. 恢复快照内容
+const { path, content } = await restoreSnapshot({ snapshotId: snapshots[0].id });
+
+// 3. 预览 Diff
+const dryRunResult = await writeToFile({ path, content, dryRun: true });
+// UI 显示 dryRunResult.diff
+
+// 4. 用户确认后应用
+const applyResult = await writeToFile({ path, content, dryRun: false });
+// 返回新的 snapshotId
+```
+
+---
+
 ### 2.4 `generate_character_profile`（可选）
 
 **用途**：按项目约定写入角色定义

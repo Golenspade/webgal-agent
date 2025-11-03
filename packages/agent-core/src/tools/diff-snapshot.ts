@@ -140,15 +140,22 @@ export class SnapshotManager {
 
   /**
    * 列出快照
-   * @param options.limit - 最大返回数量（默认 50）
-   * @param options.path - 按路径过滤（startsWith 匹配）
+   * @param options.limit - 最大返回数量（默认 50，负数/NaN 会被规范化）
+   * @param options.path - 按路径过滤（POSIX 格式前缀匹配，如 'game/scene'）
    */
   async listSnapshots(options?: {
     limit?: number;
     path?: string;
   }): Promise<SnapshotMetadata[]> {
-    const limit = options?.limit ?? 50;
-    const filterPath = options?.path;
+    // 规范化 limit：处理负数、NaN、undefined
+    let limit = options?.limit ?? 50;
+    if (typeof limit !== 'number' || isNaN(limit) || limit < 0) {
+      limit = 50;
+    }
+    limit = Math.min(limit, 1000); // 最大 1000 条
+
+    // 规范化 path：转换为 POSIX 格式
+    const filterPath = options?.path ? path.posix.normalize(options.path) : undefined;
 
     try {
       await this.initialize();
@@ -160,25 +167,43 @@ export class SnapshotManager {
       for (const metaFile of metaFiles) {
         try {
           const metaPath = path.join(this.snapshotDir, metaFile);
+          const contentPath = path.join(this.snapshotDir, metaFile.replace('.meta.json', '.txt'));
+
+          // 检查对应的 .txt 文件是否存在
+          try {
+            await fs.access(contentPath);
+          } catch {
+            // 跳过缺少内容文件的快照
+            console.warn(`Skipping snapshot with missing content: ${metaFile}`);
+            continue;
+          }
+
           const content = await fs.readFile(metaPath, 'utf-8');
           const metadata: SnapshotMetadata = JSON.parse(content);
 
-          // 路径过滤
-          if (filterPath && !metadata.path.startsWith(filterPath)) {
+          // 规范化存储的路径为 POSIX 格式
+          const normalizedPath = path.posix.normalize(metadata.path);
+
+          // 路径过滤（前缀匹配）
+          if (filterPath && !normalizedPath.startsWith(filterPath)) {
             continue;
           }
 
           snapshots.push(metadata);
         } catch (err) {
-          // 跳过损坏的元数据文件
+          // 跳过损坏的元数据文件（JSON 解析失败等）
           console.warn(`Failed to read snapshot metadata: ${metaFile}`, err);
         }
       }
 
-      // 按时间降序排序
-      snapshots.sort((a, b) => b.timestamp - a.timestamp);
+      // 按时间降序排序，timestamp 相同时按 id 排序（稳定性）
+      snapshots.sort((a, b) => {
+        const timeDiff = b.timestamp - a.timestamp;
+        if (timeDiff !== 0) return timeDiff;
+        return b.id.localeCompare(a.id);
+      });
 
-      // 限制返回数量
+      // 限制返回数量（在过滤后应用）
       return snapshots.slice(0, limit);
     } catch (err) {
       // 目录不存在或读取失败，返回空数组
@@ -189,10 +214,17 @@ export class SnapshotManager {
   /**
    * 恢复快照
    */
+  /**
+   * 恢复快照
+   * @param snapshotId - 快照 ID
+   * @throws ENOENT 如果快照不存在
+   * @throws Error 如果 JSON 解析失败
+   */
   async restoreSnapshot(snapshotId: string): Promise<{ path: string; content: string }> {
     const contentPath = path.join(this.snapshotDir, `${snapshotId}.txt`);
     const metaPath = path.join(this.snapshotDir, `${snapshotId}.meta.json`);
 
+    // 读取内容和元数据（会抛出 ENOENT）
     const content = await fs.readFile(contentPath, 'utf-8');
     const metaContent = await fs.readFile(metaPath, 'utf-8');
     const metadata: SnapshotMetadata = JSON.parse(metaContent);

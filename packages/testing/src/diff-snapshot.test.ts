@@ -244,13 +244,101 @@ runner.test('SnapshotManager: should handle restore of non-existent snapshot', a
 
     let errorThrown = false;
     try {
-      await manager.restoreSnapshot('snap_20231201T120000_nonexist');
+      await manager.restoreSnapshot('snap_20231201T120000_abcd1234');
     } catch (err) {
       errorThrown = true;
       assert((err as NodeJS.ErrnoException).code === 'ENOENT', 'should throw ENOENT error');
     }
 
     assert(errorThrown, 'should throw error for non-existent snapshot');
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
+runner.test('SnapshotManager: should skip snapshots with missing content files', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    const manager = new SnapshotManager(projectRoot, 20);
+    const fs = await import('fs/promises');
+    const path = await import('path');
+
+    // 创建一个正常快照
+    const id1 = await manager.saveSnapshot('test1.txt', 'content1', 'key1');
+
+    // 手动删除内容文件，只保留 meta
+    const snapshotDir = path.join(projectRoot, '.webgal_agent/snapshots');
+    const contentPath = path.join(snapshotDir, `${id1}.txt`);
+    await fs.unlink(contentPath);
+
+    // 创建另一个正常快照
+    const id2 = await manager.saveSnapshot('test2.txt', 'content2', 'key2');
+
+    const snapshots = await manager.listSnapshots();
+
+    // 应该只返回有完整文件的快照
+    assertEqual(snapshots.length, 1, 'should skip snapshot with missing content');
+    assertEqual(snapshots[0].id, id2, 'should return the valid snapshot');
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
+runner.test('SnapshotManager: should handle negative limit gracefully', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    const manager = new SnapshotManager(projectRoot, 20);
+
+    // 创建 3 个快照
+    await manager.saveSnapshot('test1.txt', 'content1', 'key1');
+    await manager.saveSnapshot('test2.txt', 'content2', 'key2');
+    await manager.saveSnapshot('test3.txt', 'content3', 'key3');
+
+    // 负数 limit 应该被规范化为默认值 50
+    const snapshots = await manager.listSnapshots({ limit: -10 });
+
+    assertEqual(snapshots.length, 3, 'should return all snapshots when limit is negative');
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
+runner.test('SnapshotManager: should sort by id when timestamps are equal', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    const manager = new SnapshotManager(projectRoot, 20);
+    const fs = await import('fs/promises');
+    const path = await import('path');
+
+    // 创建两个快照
+    const id1 = await manager.saveSnapshot('test1.txt', 'content1', 'key1');
+    const id2 = await manager.saveSnapshot('test2.txt', 'content2', 'key2');
+
+    // 手动修改第二个快照的 timestamp 使其与第一个相同
+    const snapshotDir = path.join(projectRoot, '.webgal_agent/snapshots');
+    const meta1Path = path.join(snapshotDir, `${id1}.meta.json`);
+    const meta2Path = path.join(snapshotDir, `${id2}.meta.json`);
+
+    const meta1 = JSON.parse(await fs.readFile(meta1Path, 'utf-8'));
+    const meta2 = JSON.parse(await fs.readFile(meta2Path, 'utf-8'));
+
+    meta2.timestamp = meta1.timestamp; // 设置相同的 timestamp
+    await fs.writeFile(meta2Path, JSON.stringify(meta2, null, 2));
+
+    const snapshots = await manager.listSnapshots();
+
+    // 当 timestamp 相同时，应该按 id 降序排序
+    assertEqual(snapshots.length, 2, 'should have 2 snapshots');
+    if (id2 > id1) {
+      assertEqual(snapshots[0].id, id2, 'larger id should come first');
+      assertEqual(snapshots[1].id, id1, 'smaller id should come second');
+    } else {
+      assertEqual(snapshots[0].id, id1, 'larger id should come first');
+      assertEqual(snapshots[1].id, id2, 'smaller id should come second');
+    }
   } finally {
     await cleanupTestProject(projectRoot);
   }

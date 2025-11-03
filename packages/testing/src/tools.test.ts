@@ -305,6 +305,89 @@ runner.test('preview_scene: should extract port from logs', async () => {
   }
 });
 
+// 测试快照工具的错误处理
+runner.test('listSnapshots: should validate parameters', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    const tools = new WebGALAgentTools({
+      projectRoot,
+      sandbox: {
+        ...DEFAULT_SANDBOX_CONFIG,
+        projectRoot,
+      },
+    });
+
+    // 测试无效的 limit 类型
+    let errorThrown = false;
+    try {
+      await tools.listSnapshots({ limit: 'invalid' as any });
+    } catch (err: any) {
+      errorThrown = true;
+      assertEqual(err.error.code, 'E_BAD_ARGS', 'should return E_BAD_ARGS for invalid limit');
+    }
+    assert(errorThrown, 'should throw error for invalid limit type');
+
+    // 测试无效的 path 类型
+    errorThrown = false;
+    try {
+      await tools.listSnapshots({ path: 123 as any });
+    } catch (err: any) {
+      errorThrown = true;
+      assertEqual(err.error.code, 'E_BAD_ARGS', 'should return E_BAD_ARGS for invalid path');
+    }
+    assert(errorThrown, 'should throw error for invalid path type');
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
+runner.test('restoreSnapshot: should validate snapshotId', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    const tools = new WebGALAgentTools({
+      projectRoot,
+      sandbox: {
+        ...DEFAULT_SANDBOX_CONFIG,
+        projectRoot,
+      },
+    });
+
+    // 测试空 snapshotId
+    let errorThrown = false;
+    try {
+      await tools.restoreSnapshot({ snapshotId: '' });
+    } catch (err: any) {
+      errorThrown = true;
+      assertEqual(err.error.code, 'E_BAD_ARGS', 'should return E_BAD_ARGS for empty snapshotId');
+    }
+    assert(errorThrown, 'should throw error for empty snapshotId');
+
+    // 测试无效格式的 snapshotId
+    errorThrown = false;
+    try {
+      await tools.restoreSnapshot({ snapshotId: 'invalid-format' });
+    } catch (err: any) {
+      errorThrown = true;
+      assertEqual(err.error.code, 'E_BAD_ARGS', 'should return E_BAD_ARGS for invalid format');
+    }
+    assert(errorThrown, 'should throw error for invalid snapshotId format');
+
+    // 测试不存在的 snapshotId（格式正确）
+    errorThrown = false;
+    try {
+      await tools.restoreSnapshot({ snapshotId: 'snap_20231201T120000_abcd1234' });
+    } catch (err: any) {
+      errorThrown = true;
+      assertEqual(err.error.code, 'E_NOT_FOUND', 'should return E_NOT_FOUND for non-existent snapshot');
+    }
+    assert(errorThrown, 'should throw error for non-existent snapshot');
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
 // 运行所有测试
 runner.run().catch(console.error);
 

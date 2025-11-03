@@ -477,6 +477,35 @@ export class FileSystemTools {
    * 列出快照
    */
   async listSnapshots(request: ListSnapshotsRequest): Promise<ListSnapshotsResponse> {
+    // 参数验证
+    if (request.limit !== undefined) {
+      if (typeof request.limit !== 'number') {
+        throw {
+          error: {
+            code: ErrorCode.E_BAD_ARGS,
+            message: 'limit must be a number',
+            details: { limit: request.limit },
+            hint: 'Provide a positive integer for limit',
+            recoverable: true,
+          },
+        };
+      }
+    }
+
+    if (request.path !== undefined) {
+      if (typeof request.path !== 'string') {
+        throw {
+          error: {
+            code: ErrorCode.E_BAD_ARGS,
+            message: 'path must be a string',
+            details: { path: request.path },
+            hint: 'Provide a valid path string for filtering',
+            recoverable: true,
+          },
+        };
+      }
+    }
+
     try {
       const snapshots = await this.snapshotManager.listSnapshots({
         limit: request.limit,
@@ -499,6 +528,32 @@ export class FileSystemTools {
    * 恢复快照
    */
   async restoreSnapshot(request: RestoreSnapshotRequest): Promise<RestoreSnapshotResponse> {
+    // 参数验证
+    if (!request.snapshotId || typeof request.snapshotId !== 'string') {
+      throw {
+        error: {
+          code: ErrorCode.E_BAD_ARGS,
+          message: 'snapshotId is required and must be a string',
+          details: { snapshotId: request.snapshotId },
+          hint: 'Provide a valid snapshot ID (e.g., snap_20231201T120000_abcd1234)',
+          recoverable: true,
+        },
+      };
+    }
+
+    // 验证 snapshotId 格式
+    if (!/^snap_\d{8}T\d{6}_[0-9a-f]{8}$/.test(request.snapshotId)) {
+      throw {
+        error: {
+          code: ErrorCode.E_BAD_ARGS,
+          message: `Invalid snapshot ID format: ${request.snapshotId}`,
+          details: { snapshotId: request.snapshotId },
+          hint: 'Snapshot ID must match format: snap_YYYYMMDDThhmmss_<8hex>',
+          recoverable: true,
+        },
+      };
+    }
+
     try {
       const result = await this.snapshotManager.restoreSnapshot(request.snapshotId);
       return result;
@@ -511,6 +566,19 @@ export class FileSystemTools {
             details: { snapshotId: request.snapshotId },
             hint: 'The snapshot may have been cleaned up or never existed',
             recoverable: true,
+          },
+        };
+      }
+
+      // JSON 解析错误
+      if (err instanceof SyntaxError) {
+        throw {
+          error: {
+            code: ErrorCode.E_PARSE_FAIL,
+            message: `Snapshot metadata is corrupted: ${request.snapshotId}`,
+            details: { snapshotId: request.snapshotId },
+            hint: 'The snapshot metadata file may be damaged',
+            recoverable: false,
           },
         };
       }

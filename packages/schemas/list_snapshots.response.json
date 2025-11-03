@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ListSnapshotsResponse",
+  "description": "快照列表响应（按时间降序）",
+  "type": "object",
+  "required": ["snapshots"],
+  "properties": {
+    "snapshots": {
+      "type": "array",
+      "description": "快照元数据数组",
+      "items": {
+        "$ref": "#/definitions/SnapshotMetadata"
+      }
+    }
+  },
+  "definitions": {
+    "SnapshotMetadata": {
+      "type": "object",
+      "required": ["id", "path", "timestamp", "contentHash"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "快照 ID（格式：snap_YYYYMMDDThhmmss_<8hex>）",
+          "pattern": "^snap_\\d{8}T\\d{6}_[0-9a-f]{8}$",
+          "examples": ["snap_20231201T143022_a1b2c3d4"]
+        },
+        "path": {
+          "type": "string",
+          "description": "文件路径（POSIX 格式，相对于项目根）",
+          "examples": ["game/scene/start.txt", "game/config.json"]
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "创建时间戳（毫秒）",
+          "examples": [1701437422000]
+        },
+        "contentHash": {
+          "type": "string",
+          "description": "内容 SHA-256 哈希（前 8 位）",
+          "pattern": "^[0-9a-f]{8}$",
+          "examples": ["a1b2c3d4"]
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "description": "幂等性键（可选）",
+          "examples": ["user-action-123"]
+        }
+      }
+    }
+  }
+}
+
