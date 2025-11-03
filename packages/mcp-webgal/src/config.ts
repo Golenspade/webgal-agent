@@ -1,6 +1,6 @@
 /**
  * 配置加载与合并
- * 
+ *
  * 优先级：CLI 参数 > policies 文件 > 内置默认值
  */
 
@@ -9,14 +9,21 @@ import { resolve, join } from 'path';
 import { existsSync } from 'fs';
 import type { SandboxConfig, ExecutionConfig, BrowserConfig } from '@webgal-agent/tool-bridge';
 import { DEFAULT_SANDBOX_CONFIG, DEFAULT_EXECUTION_CONFIG, DEFAULT_BROWSER_CONFIG } from '@webgal-agent/tool-bridge';
+import type { IdempotencyConfig } from '@webgal-agent/agent-core/tools';
 
 // ============ 类型定义 ============
+
+export interface PartialIdempotencyConfig {
+  maxEntries?: number;
+  maxAgeDays?: number;
+}
 
 export interface PolicyFile {
   snapshotRetention?: number;
   writes?: {
     snapshotRetention?: number;
   };
+  idempotency?: PartialIdempotencyConfig;
   sandbox?: Partial<Omit<SandboxConfig, 'projectRoot'>>;
   execution?: Partial<ExecutionConfig> & { enabled?: boolean };
   browser?: Partial<BrowserConfig> & { enabled?: boolean };
@@ -24,6 +31,7 @@ export interface PolicyFile {
 
 export interface CliOverrides {
   snapshotRetention?: number;
+  idempotency?: PartialIdempotencyConfig;
   sandbox?: {
     forbiddenDirs?: string[];
     maxReadBytes?: number;
@@ -46,6 +54,7 @@ export interface CliOverrides {
 
 export interface ResolvedConfig {
   snapshotRetention: number;
+  idempotency: IdempotencyConfig;
   sandbox: Omit<SandboxConfig, 'projectRoot'>;
   execution?: ExecutionConfig;
   browser?: BrowserConfig;
@@ -150,6 +159,7 @@ export async function collectAllowedCommands(projectRoot: string): Promise<strin
 export function mergeConfig(options: {
   defaults: {
     snapshotRetention: number;
+    idempotency: IdempotencyConfig;
     sandbox: Omit<SandboxConfig, 'projectRoot'>;
     execution: ExecutionConfig;
     browser: BrowserConfig;
@@ -164,6 +174,12 @@ export function mergeConfig(options: {
     ?? policies?.writes?.snapshotRetention
     ?? policies?.snapshotRetention
     ?? defaults.snapshotRetention;
+
+  // 幂等配置
+  const idempotency: IdempotencyConfig = {
+    maxEntries: cli.idempotency?.maxEntries ?? policies?.idempotency?.maxEntries ?? defaults.idempotency.maxEntries ?? 500,
+    maxAgeDays: cli.idempotency?.maxAgeDays ?? policies?.idempotency?.maxAgeDays ?? defaults.idempotency.maxAgeDays ?? 7,
+  };
 
   // Sandbox 配置
   const sandbox: Omit<SandboxConfig, 'projectRoot'> = {
@@ -197,6 +213,7 @@ export function mergeConfig(options: {
 
   return {
     snapshotRetention,
+    idempotency,
     sandbox,
     execution,
     browser,
@@ -217,6 +234,10 @@ export async function loadResolvedConfig(
   // 内置默认值（增强 .webgal_agent 到 forbidden）
   const defaults = {
     snapshotRetention: 20,
+    idempotency: {
+      maxEntries: 500,
+      maxAgeDays: 7,
+    },
     sandbox: {
       ...DEFAULT_SANDBOX_CONFIG,
       forbiddenDirs: Array.from(new Set([...DEFAULT_SANDBOX_CONFIG.forbiddenDirs, '.webgal_agent'])),

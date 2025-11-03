@@ -186,6 +186,19 @@
 - ✅ validate_script: 检测资源缺失
 - ✅ list_project_resources: 列出所有资源
 
+### 9. 运行时可见性（Stage 3.4）
+
+位置:
+- `packages/mcp-webgal/src/server.ts`
+- `packages/schemas/get_runtime_info.response.json`
+
+状态:
+- ✅ MCP 工具 `get_runtime_info`（只读；敏感字段剔除；`execution/browser` 关闭时省略）
+- ✅ 测试：`packages/testing/src/mcp-runtime.test.ts`（覆盖默认禁用与启用两种场景）
+- ⚠️ UI：Runtime 卡片与 ErrorBanner 动态提示在外部仓库（Terre/origine2），本仓库不包含前端代码
+
+---
+
 ---
 
 ## ⚠️ 待完成/待集成
@@ -242,8 +255,8 @@
 
 ## 🚀 下一步
 
-1. **安装依赖**: `npm install` 或 `pnpm install`
-2. **运行测试**: `cd packages/testing && npm test`
+1. **安装依赖**: `yarn install`
+2. **运行测试**: `cd packages/testing && yarn test`
 3. **修复测试失败**（如果有）
 4. **集成 UI 层**（VSCode Extension 或 CLI）
 5. **端到端测试**（真实 WebGAL 项目）

@@ -13,6 +13,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { WebGALAgentTools } from '@webgal-agent/agent-core/tools';
 import type { ResolvedConfig } from './config.js';
+import { checkLock } from './lock-manager.js';
 
 export interface ServerConfig extends ResolvedConfig {
   projectRoot: string;
@@ -44,6 +45,7 @@ export async function createMCPServer(config: ServerConfig) {
     execution: config.execution,
     browser: config.browser,
     snapshotRetention: config.snapshotRetention,
+    idempotency: config.idempotency,
   });
 
   // 定义工具列表
@@ -201,6 +203,14 @@ export async function createMCPServer(config: ServerConfig) {
         required: ['result'],
       },
     },
+    {
+      name: 'get_runtime_info',
+      description: '获取当前 MCP 服务器的运行时环境信息和策略配置',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    },
   ];
 
   // 注册 list_tools 处理器
@@ -251,6 +261,41 @@ export async function createMCPServer(config: ServerConfig) {
           break;
         case 'attempt_completion':
           result = await tools.attemptCompletion(args as any);
+          break;
+        case 'get_runtime_info':
+          // 直接在 MCP 层返回运行时信息（不涉及工具层）
+          const lock = await checkLock(config.projectRoot);
+          result = {
+            projectRoot: config.projectRoot,
+            snapshotRetention: config.snapshotRetention,
+            sandbox: {
+              forbiddenDirs: config.sandbox.forbiddenDirs,
+              maxReadBytes: config.sandbox.maxReadBytes,
+              textEncoding: config.sandbox.textEncoding,
+            },
+            ...(config.execution && {
+              execution: {
+                enabled: true,
+                allowedCommands: config.execution.allowedCommands,
+                timeoutMs: config.execution.timeoutMs,
+                ...(config.execution.workingDir && { workingDir: config.execution.workingDir }),
+              },
+            }),
+            ...(config.browser && {
+              browser: {
+                enabled: true,
+                allowedHosts: config.browser.allowedHosts,
+                timeoutMs: config.browser.timeoutMs,
+                ...(config.browser.screenshotDir && { screenshotDir: config.browser.screenshotDir }),
+              },
+            }),
+            ...(lock && { lock }),
+            tools: toolDefinitions.map((t) => t.name),
+            server: {
+              name: 'webgal-agent',
+              version: '0.1.0',
+            },
+          };
           break;
         default:
           throw new Error(`Unknown tool: ${name}`);

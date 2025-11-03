@@ -8,6 +8,9 @@ import { runner as bridgeRunner } from './bridge.test.js';
 import { runner as resourcesPreviewRunner } from './resources-preview.test.js';
 import { runner as diffSnapshotRunner } from './diff-snapshot.test.js';
 import { runner as interactRunner } from './interact.test.js';
+import { runner as mcpRuntimeRunner } from './mcp-runtime.test.js';
+import { runner as lockRunner } from './lock.test.js';
+import { runner as idempotencyRunner } from './idempotency.test.js';
 
 async function runAllTests() {
   console.log('\n═══════════════════════════════════════════════════════');
@@ -21,6 +24,9 @@ async function runAllTests() {
     { name: '资源与预览', runner: resourcesPreviewRunner },
     { name: 'Diff 与快照', runner: diffSnapshotRunner },
     { name: '交互工具', runner: interactRunner },
+    { name: 'MCP 运行时可见性', runner: mcpRuntimeRunner },
+    { name: '锁机制', runner: lockRunner },
+    { name: '幂等持久化', runner: idempotencyRunner },
   ];
 
   let totalPassed = 0;

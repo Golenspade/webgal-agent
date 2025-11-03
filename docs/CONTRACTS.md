@@ -614,7 +614,131 @@ const applyResult = await writeToFile({ path, content, dryRun: false });
 
 ---
 
-### 2.4 `generate_character_profile`（可选）
+### 2.6 `get_runtime_info`
+
+**用途**：获取当前 MCP 服务器的运行时环境信息和策略配置
+
+**Request**
+
+```json
+{
+  "$id": "get_runtime_info.request",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}
+```
+
+**Response**
+
+```json
+{
+  "$id": "get_runtime_info.response",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "projectRoot": { "type": "string", "description": "项目根目录绝对路径" },
+    "snapshotRetention": { "type": "integer", "minimum": 0, "description": "快照保留数量" },
+    "sandbox": {
+      "type": "object",
+      "properties": {
+        "forbiddenDirs": { "type": "array", "items": { "type": "string" } },
+        "maxReadBytes": { "type": "integer", "minimum": 1 },
+        "textEncoding": { "type": "string", "enum": ["utf-8", "utf-16", "ascii"] }
+      },
+      "required": ["forbiddenDirs", "maxReadBytes", "textEncoding"]
+    },
+    "execution": {
+      "type": "object",
+      "description": "仅在启用时存在",
+      "properties": {
+        "enabled": { "type": "boolean", "const": true },
+        "allowedCommands": { "type": "array", "items": { "type": "string" } },
+        "timeoutMs": { "type": "integer", "minimum": 1 },
+        "workingDir": { "type": "string" }
+      },
+      "required": ["enabled", "allowedCommands", "timeoutMs"]
+    },
+    "browser": {
+      "type": "object",
+      "description": "仅在启用时存在",
+      "properties": {
+        "enabled": { "type": "boolean", "const": true },
+        "allowedHosts": { "type": "array", "items": { "type": "string" } },
+        "timeoutMs": { "type": "integer", "minimum": 1 },
+        "screenshotDir": { "type": "string" }
+      },
+      "required": ["enabled", "allowedHosts", "timeoutMs"]
+    },
+    "tools": { "type": "array", "items": { "type": "string" }, "description": "当前注册的工具名称列表" },
+    "server": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+      },
+      "required": ["name", "version"]
+    }
+  },
+  "required": ["projectRoot", "snapshotRetention", "sandbox", "tools", "server"]
+}
+```
+
+**语义约束**
+
+1. **敏感字段剔除**：不返回 `redactEnv`、密钥等敏感配置
+2. **条件字段**：`execution` 和 `browser` 仅在 `enabled: true` 时存在
+3. **工具列表**：`tools` 数组包含所有当前注册的 MCP 工具名称
+4. **版本格式**：`server.version` 遵循 semver 格式（如 `0.1.0`）
+
+**示例返回**
+
+```json
+{
+  "projectRoot": "/Users/user/projects/my-webgal-game",
+  "snapshotRetention": 20,
+  "sandbox": {
+    "forbiddenDirs": ["node_modules", ".git"],
+    "maxReadBytes": 5242880,
+    "textEncoding": "utf-8"
+  },
+  "execution": {
+    "enabled": true,
+    "allowedCommands": ["yarn", "npm", "git"],
+    "timeoutMs": 30000,
+    "workingDir": "/Users/user/projects/my-webgal-game"
+  },
+  "browser": {
+    "enabled": true,
+    "allowedHosts": ["localhost", "127.0.0.1"],
+    "timeoutMs": 15000,
+    "screenshotDir": ".webgal_agent/screenshots"
+  },
+  "tools": [
+    "list_files", "read_file", "write_to_file", "replace_in_file", "search_files",
+    "validate_script", "list_project_resources", "preview_scene",
+    "execute_command", "browser_action",
+    "list_snapshots", "restore_snapshot", "get_runtime_info"
+  ],
+  "server": {
+    "name": "webgal-agent",
+    "version": "0.1.0"
+  }
+}
+```
+
+**可能错误**：无（只读操作，不应失败）
+
+**用途场景**
+
+- 前端 UI 展示当前运行环境和策略配置
+- 调试时确认工具可用性和限制
+- 生成策略配置建议（如调整 retention、maxReadBytes）
+
+---
+
+### 2.7 `generate_character_profile`（可选）
 
 **用途**：按项目约定写入角色定义
 

@@ -95,6 +95,30 @@ Terre 前端（origine2）
 - 能浏览/筛选最近快照，预览 Diff 并恢复；错误提示与重试友好；不改预览逻辑。
 
 ---
+## Stage 3.4 — 运行时可见性 + 上下文提示（已完成）
+目标
+- 让用户在 UI 中看见当前运行时能力与限制（沙箱/执行/浏览器/快照）
+- 工具失败时给出可操作的提示（基于策略与运行时信息）
+
+范围
+- 新增 MCP 工具：`get_runtime_info`（只读）
+- Terre：复用 `/api/agent/call` 获取 runtime（外部仓库）
+- 前端：AgentPanel 中新增 Runtime 卡片（外部仓库）
+- Schemas：`packages/schemas/get_runtime_info.response.json`
+- MCP：在 `packages/mcp-webgal/src/server.ts` 注册工具并从解析后的 config 构造响应
+- Testing：最低限度的 MCP 集成测试（本仓库）
+- 文档：更新 `CONTRACTS.md`、本文件
+
+验收
+- `tools/list` 返回 `get_runtime_info`
+- `tools/call(name: get_runtime_info)` 返回不包含敏感字段（如 `redactEnv`）；当 `execution/browser` 关闭时对应字段省略
+- 前端展示运行时信息，ErrorBanner 根据错误码显示策略相关提示（前端在外部仓库）
+
+备注
+- stdio 采用 Content-Length 帧；Terre Bridge 需按此实现/对齐
+
+---
+
 
 ## Stage 4 — 构建与文档
 目标

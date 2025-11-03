@@ -14,6 +14,7 @@ import { FileSystemTools } from './fs.js';
 import { ScriptValidator } from './validate.js';
 import { WebGALTools } from './preview.js';
 import { InteractionTools } from './interact.js';
+import type { IdempotencyConfig } from './diff-snapshot.js';
 import type {
   ListFilesRequest,
   ListFilesResponse,
@@ -53,6 +54,7 @@ export interface ToolsConfig {
   execution?: ExecutionConfig;
   browser?: BrowserConfig;
   snapshotRetention?: number;
+  idempotency?: IdempotencyConfig;
 }
 
 /**
@@ -75,7 +77,8 @@ export class WebGALAgentTools {
     this.fsTools = new FileSystemTools(
       this.sandbox,
       config.projectRoot,
-      config.snapshotRetention || 20
+      config.snapshotRetention || 20,
+      config.idempotency
     );
 
     // 初始化校验器

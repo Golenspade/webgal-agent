@@ -6,10 +6,15 @@
   "bin": {
     "mcp-webgal": "./dist/bin.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "start": "tsx src/bin.ts",
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "prepublishOnly": "yarn build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.5.0",

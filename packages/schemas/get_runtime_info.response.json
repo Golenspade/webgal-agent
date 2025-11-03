@@ -1,0 +1,185 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "get_runtime_info.response",
+  "title": "GetRuntimeInfoResponse",
+  "description": "运行时环境信息响应",
+  "type": "object",
+  "properties": {
+    "projectRoot": {
+      "type": "string",
+      "description": "项目根目录绝对路径"
+    },
+    "snapshotRetention": {
+      "type": "integer",
+      "description": "快照保留数量",
+      "minimum": 0
+    },
+    "sandbox": {
+      "type": "object",
+      "description": "沙箱配置",
+      "properties": {
+        "forbiddenDirs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "禁止访问的目录列表（相对路径）"
+        },
+        "maxReadBytes": {
+          "type": "integer",
+          "description": "单次读取最大字节数",
+          "minimum": 1
+        },
+        "textEncoding": {
+          "type": "string",
+          "description": "文本编码格式",
+          "enum": ["utf-8", "utf-16", "ascii"]
+        }
+      },
+      "required": ["forbiddenDirs", "maxReadBytes", "textEncoding"]
+    },
+    "execution": {
+      "type": "object",
+      "description": "命令执行配置（仅在启用时存在）",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "const": true,
+          "description": "是否启用命令执行"
+        },
+        "allowedCommands": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "允许执行的命令白名单"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "description": "命令执行超时时间（毫秒）",
+          "minimum": 1
+        },
+        "workingDir": {
+          "type": "string",
+          "description": "命令执行工作目录（可选）"
+        }
+      },
+      "required": ["enabled", "allowedCommands", "timeoutMs"]
+    },
+    "browser": {
+      "type": "object",
+      "description": "浏览器配置（仅在启用时存在）",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "const": true,
+          "description": "是否启用浏览器工具"
+        },
+        "allowedHosts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "允许访问的主机白名单"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "description": "浏览器操作超时时间（毫秒）",
+          "minimum": 1
+        },
+        "screenshotDir": {
+          "type": "string",
+          "description": "截图保存目录（可选）"
+        }
+      },
+      "required": ["enabled", "allowedHosts", "timeoutMs"]
+    },
+    "lock": {
+      "type": "object",
+      "description": "当前运行时锁信息（如果存在）",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "enum": ["cline", "terre", "manual"],
+          "description": "锁的所有者"
+        },
+        "pid": {
+          "type": "integer",
+          "description": "进程 ID"
+        },
+        "host": {
+          "type": "string",
+          "description": "主机名"
+        },
+        "startedAt": {
+          "type": "integer",
+          "description": "启动时间戳（毫秒）"
+        },
+        "version": {
+          "type": "string",
+          "description": "MCP 服务器版本"
+        }
+      },
+      "required": ["owner", "pid", "host", "startedAt", "version"]
+    },
+    "tools": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "当前注册的工具名称列表"
+    },
+    "server": {
+      "type": "object",
+      "description": "MCP 服务器信息",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "服务器名称"
+        },
+        "version": {
+          "type": "string",
+          "description": "服务器版本",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        }
+      },
+      "required": ["name", "version"]
+    }
+  },
+  "required": ["projectRoot", "snapshotRetention", "sandbox", "tools", "server"],
+  "examples": [
+    {
+      "projectRoot": "/Users/user/projects/my-webgal-game",
+      "snapshotRetention": 20,
+      "sandbox": {
+        "forbiddenDirs": ["node_modules", ".git"],
+        "maxReadBytes": 5242880,
+        "textEncoding": "utf-8"
+      },
+      "execution": {
+        "enabled": true,
+        "allowedCommands": ["yarn", "npm", "git"],
+        "timeoutMs": 30000,
+        "workingDir": "/Users/user/projects/my-webgal-game"
+      },
+      "browser": {
+        "enabled": true,
+        "allowedHosts": ["localhost", "127.0.0.1"],
+        "timeoutMs": 15000,
+        "screenshotDir": ".webgal_agent/screenshots"
+      },
+      "tools": [
+        "list_files",
+        "read_file",
+        "write_to_file",
+        "replace_in_file",
+        "search_files",
+        "validate_script",
+        "list_project_resources",
+        "preview_scene",
+        "execute_command",
+        "browser_action",
+        "list_snapshots",
+        "restore_snapshot",
+        "get_runtime_info"
+      ],
+      "server": {
+        "name": "webgal-agent",
+        "version": "0.1.0"
+      }
+    }
+  ]
+}
+

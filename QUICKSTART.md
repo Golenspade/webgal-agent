@@ -264,6 +264,36 @@ try {
 - 查看 [packages/agent-core/README.md](packages/agent-core/README.md) 了解更多 API 细节
 - 运行测试了解更多使用示例
 
+## 与 Cline 集成（推荐）
+
+你可以直接在 Cline 中把本项目作为 MCP 服务器接入，这样就能用 Cline 的 Chat（Plan→Act）来调用本工具集完成 WebGAL 的自动化编辑。
+
+步骤（stdio 方式）
+- 在 Cline 的 MCP 设置里新增一个服务器：
+  - `type: "stdio"`
+  - `command: "node"`
+  - `args`: 指向本仓库的 MCP 入口与项目根，例如：
+    - 开发（TS 源码）: `--import tsx <repo>/packages/mcp-webgal/src/bin.ts --project <你的WebGAL项目根> --policies <policies.json>`
+    - 生产（构建产物）: `<repo>/packages/mcp-webgal/dist/bin.js --project <你的WebGAL项目根> --policies <policies.json>`
+  - `cwd`: `<你的WebGAL项目根>`
+- 建议仅对 `list_files`、`read_file`、`search_files` 做 autoApprove；`write_to_file` / `replace_in_file` / `execute_command` 保持手动批准。
+- 如需启用命令执行或浏览器能力：
+  - CLI 开关：`--enable-exec` / `--enable-browser`
+  - 或在 `policies.json` 打开对应 `enabled` 字段。
+
+WebGAL 使用规范（给 Cline 的提示）
+- 小改优先 `replace_in_file`；全量重写/新建用 `write_to_file`。
+- 始终先 `write_to_file(dryRun: true)` 预览，再在用户批准后 `dryRun: false` 应用。
+- 修改脚本后用 `validate_script` 校验；需要时用 `preview_scene` 获取预览 URL。
+- 回滚：`list_snapshots` → 选择 → `restore_snapshot` → `write_to_file(dryRun:true/false)`。
+- 仅编辑 `game/**` 文本文件；不要改动 `.webgal_agent/**`、`.git/**`、`node_modules/**`。
+- 错误处理建议：
+  - `E_CONFLICT`: 先 `read_file` 取最新，再重做 Dry‑run。
+  - `E_TOOL_DISABLED`: 提醒在 policies 中开启对应能力。
+  - `E_TOO_LARGE`: 提示提升 `sandbox.maxReadBytes`（可通过 `get_runtime_info` 查看当前限制）。
+
+更多细节与可复制模板，见 `docs/CLINE_WEBGAL_INTEGRATION.md`。
+
 ## 常见问题
 
 ### Q: 如何回滚到之前的版本？
@@ -281,4 +311,3 @@ A: 在项目的 `package.json` 中添加脚本，工具会自动收集。但只�
 ### Q: 浏览器自动化功能可用吗？
 
 A: 当前是占位实现，需要集成 Playwright 等库才能真正使用。
-

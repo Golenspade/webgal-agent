@@ -20,24 +20,133 @@ export interface SnapshotMetadata {
 }
 
 /**
+ * 幂等缓存条目
+ */
+export interface IdempotencyEntry {
+  snapshotId: string;
+  timestamp: number;
+}
+
+/**
+ * 幂等缓存配置
+ */
+export interface IdempotencyConfig {
+  maxEntries: number;
+  maxAgeDays: number;
+}
+
+/**
  * 快照管理器
  */
 export class SnapshotManager {
   private snapshotDir: string;
   private retention: number;
-  private idempotencyCache: Map<string, string>; // key -> snapshotId
+  private idempotencyCache: Map<string, string>; // key -> snapshotId (内存缓存)
+  private idempotencyFile: string; // 持久化文件路径
+  private idempotencyConfig: IdempotencyConfig;
 
-  constructor(projectRoot: string, retention: number = 20) {
+  constructor(
+    projectRoot: string,
+    retention: number = 20,
+    idempotencyConfig: IdempotencyConfig = { maxEntries: 500, maxAgeDays: 7 }
+  ) {
     this.snapshotDir = path.join(projectRoot, '.webgal_agent', 'snapshots');
     this.retention = retention;
     this.idempotencyCache = new Map();
+    this.idempotencyFile = path.join(projectRoot, '.webgal_agent', 'idem.json');
+    this.idempotencyConfig = idempotencyConfig;
   }
 
   /**
-   * 初始化快照目录
+   * 初始化快照目录和幂等缓存
    */
   async initialize(): Promise<void> {
     await fs.mkdir(this.snapshotDir, { recursive: true });
+    await this.loadIdempotencyCache();
+  }
+
+  /**
+   * 加载幂等缓存（从磁盘）
+   */
+  private async loadIdempotencyCache(): Promise<void> {
+    try {
+      const content = await fs.readFile(this.idempotencyFile, 'utf-8');
+      const data: Record<string, IdempotencyEntry> = JSON.parse(content);
+
+      // 加载到内存缓存
+      for (const [key, entry] of Object.entries(data)) {
+        this.idempotencyCache.set(key, entry.snapshotId);
+      }
+    } catch (error: any) {
+      if (error.code !== 'ENOENT') {
+        console.error('警告: 加载幂等缓存失败:', error.message);
+      }
+      // 文件不存在或解析失败，使用空缓存
+    }
+  }
+
+  /**
+   * 保存幂等缓存条目（到磁盘）
+   */
+  private async saveIdempotencyEntry(key: string, snapshotId: string): Promise<void> {
+    try {
+      // 读取现有数据
+      let data: Record<string, IdempotencyEntry> = {};
+      try {
+        const content = await fs.readFile(this.idempotencyFile, 'utf-8');
+        data = JSON.parse(content);
+      } catch (error: any) {
+        if (error.code !== 'ENOENT') {
+          throw error;
+        }
+      }
+
+      // 添加新条目
+      data[key] = {
+        snapshotId,
+        timestamp: Date.now(),
+      };
+
+      // 清理过期条目
+      await this.cleanupIdempotencyCache(data);
+
+      // 写回磁盘
+      await fs.writeFile(this.idempotencyFile, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (error: any) {
+      console.error('警告: 保存幂等缓存失败:', error.message);
+    }
+  }
+
+  /**
+   * 清理幂等缓存（LRU 策略）
+   */
+  private async cleanupIdempotencyCache(data: Record<string, IdempotencyEntry>): Promise<void> {
+    const now = Date.now();
+    const maxAge = this.idempotencyConfig.maxAgeDays * 24 * 60 * 60 * 1000;
+
+    // 1. 删除过期条目（超过 maxAgeDays）
+    const entries = Object.entries(data);
+    const validEntries = entries.filter(([_, entry]) => {
+      return now - entry.timestamp < maxAge;
+    });
+
+    // 2. 如果仍然超过 maxEntries，按时间戳排序并保留最新的
+    if (validEntries.length > this.idempotencyConfig.maxEntries) {
+      validEntries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+      validEntries.splice(this.idempotencyConfig.maxEntries);
+    }
+
+    // 3. 重建 data 对象
+    const newData: Record<string, IdempotencyEntry> = {};
+    for (const [key, entry] of validEntries) {
+      newData[key] = entry;
+    }
+
+    // 4. 更新传入的 data 对象（引用传递）
+    for (const key of Object.keys(data)) {
+      delete data[key];
+    }
+    Object.assign(data, newData);
   }
 
   /**
@@ -91,9 +200,10 @@ export class SnapshotManager {
     const metaPath = path.join(this.snapshotDir, `${snapshotId}.meta.json`);
     await fs.writeFile(metaPath, JSON.stringify(metadata, null, 2), 'utf-8');
 
-    // 缓存幂等性键
+    // 缓存幂等性键（内存 + 磁盘）
     if (idempotencyKey) {
       this.idempotencyCache.set(idempotencyKey, snapshotId);
+      await this.saveIdempotencyEntry(idempotencyKey, snapshotId);
     }
 
     // 清理旧快照

@@ -6,7 +6,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { glob } from 'glob';
 import { FsSandbox, ErrorCode } from '@webgal-agent/tool-bridge';
-import { SnapshotManager, computeDiff } from './diff-snapshot.js';
+import { SnapshotManager, computeDiff, type IdempotencyConfig } from './diff-snapshot.js';
 import type {
   ListFilesRequest,
   ListFilesResponse,
@@ -33,9 +33,18 @@ export class FileSystemTools {
   private snapshotManager: SnapshotManager;
   private fileHashes: Map<string, string>; // 用于检测并发冲突
 
-  constructor(sandbox: FsSandbox, projectRoot: string, snapshotRetention: number = 20) {
+  constructor(
+    sandbox: FsSandbox,
+    projectRoot: string,
+    snapshotRetention: number = 20,
+    idempotencyConfig?: IdempotencyConfig
+  ) {
     this.sandbox = sandbox;
-    this.snapshotManager = new SnapshotManager(projectRoot, snapshotRetention);
+    this.snapshotManager = new SnapshotManager(
+      projectRoot,
+      snapshotRetention,
+      idempotencyConfig
+    );
     this.fileHashes = new Map();
   }
 

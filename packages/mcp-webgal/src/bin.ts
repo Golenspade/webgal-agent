@@ -10,6 +10,7 @@ import { startServer } from './server.js';
 import { resolve } from 'path';
 import { existsSync } from 'fs';
 import { loadResolvedConfig, resolvePoliciesPath, parseListFlag, type CliOverrides } from './config.js';
+import { acquireLock, registerLockCleanup } from './lock-manager.js';
 
 interface CLIArgs extends CliOverrides {
   project?: string;
@@ -190,6 +191,10 @@ async function main() {
   };
 
   try {
+    // 获取锁（确保单实例）
+    await acquireLock(projectRoot, 'manual', '0.1.0');
+    registerLockCleanup(projectRoot);
+
     // 加载并合并配置
     const resolved = await loadResolvedConfig(projectRoot, cliOverrides, policiesPath);
 
@@ -198,6 +203,7 @@ async function main() {
     console.error(`📸 快照保留: ${resolved.snapshotRetention}`);
     console.error(`⚙️  执行能力: ${resolved.execution ? '✅ 启用' : '❌ 禁用'}`);
     console.error(`🌐 浏览器能力: ${resolved.browser ? '✅ 启用' : '❌ 禁用'}`);
+    console.error(`🔒 锁状态: ✅ 已获取 (PID: ${process.pid})`);
     if (resolved.execution) {
       console.error(`   白名单脚本: ${resolved.execution.allowedCommands.join(', ')}`);
     }
@@ -207,6 +213,10 @@ async function main() {
       ...resolved,
     });
   } catch (error: any) {
+    if (error.code === 'E_LOCK_HELD') {
+      console.error('❌ 启动失败:', error.message);
+      process.exit(2);
+    }
     console.error('❌ 启动服务器失败:', error.message);
     process.exit(1);
   }

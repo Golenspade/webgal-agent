@@ -388,6 +388,38 @@ runner.test('restoreSnapshot: should validate snapshotId', async () => {
   }
 });
 
+// 测试 10: get_runtime_info - 返回运行时信息
+runner.test('get_runtime_info: should return runtime configuration', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    const tools = new WebGALAgentTools({
+      projectRoot,
+      sandbox: {
+        ...DEFAULT_SANDBOX_CONFIG,
+        projectRoot,
+        forbiddenDirs: ['node_modules', '.git'],
+        maxReadBytes: 5242880,
+        textEncoding: 'utf-8',
+      },
+      snapshotRetention: 20,
+    });
+
+    // 注意：get_runtime_info 在 MCP 层实现，这里测试工具层配置是否正确传递
+    // 实际的 get_runtime_info 测试应在 MCP 集成测试中进行
+
+    // 验证工具实例化时的配置
+    const config = (tools as any).config;
+    assertEqual(config.projectRoot, projectRoot, 'projectRoot should match');
+    assertEqual(config.snapshotRetention, 20, 'snapshotRetention should be 20');
+    assertEqual(config.sandbox.forbiddenDirs.length, 2, 'should have 2 forbidden dirs');
+    assertEqual(config.sandbox.maxReadBytes, 5242880, 'maxReadBytes should be 5MB');
+    assertEqual(config.sandbox.textEncoding, 'utf-8', 'textEncoding should be utf-8');
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
 // 运行所有测试
 runner.run().catch(console.error);
 

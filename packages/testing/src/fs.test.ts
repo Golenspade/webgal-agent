@@ -21,7 +21,7 @@ const runner = new TestRunner();
 // list_files 测试
 runner.test('list_files: should list directory', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     const tools = new WebGALAgentTools({
       projectRoot,
@@ -40,7 +40,7 @@ runner.test('list_files: should list directory', async () => {
 
 runner.test('list_files: should support globs', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     const tools = new WebGALAgentTools({
       projectRoot,
@@ -60,7 +60,7 @@ runner.test('list_files: should support globs', async () => {
 
 runner.test('list_files: should return E_NOT_FOUND for missing directory', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     const tools = new WebGALAgentTools({
       projectRoot,
@@ -79,7 +79,7 @@ runner.test('list_files: should return E_NOT_FOUND for missing directory', async
 // read_file 测试
 runner.test('read_file: should read file content', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     const tools = new WebGALAgentTools({
       projectRoot,
@@ -87,7 +87,7 @@ runner.test('read_file: should read file content', async () => {
     });
 
     const result = await tools.readFile({ path: 'game/scene/start.txt' });
-    
+
     assertOnlyKeys(result, ['path', 'content', 'encoding', 'bytes'], 'read_file response');
     assertEqual(result.path, 'game/scene/start.txt');
     assertEqual(result.encoding, 'utf-8');
@@ -99,10 +99,10 @@ runner.test('read_file: should read file content', async () => {
 
 runner.test('read_file: should respect maxBytes limit', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     await createLargeFile(projectRoot, 'large.txt', 2000);
-    
+
     const tools = new WebGALAgentTools({
       projectRoot,
       sandbox: { ...DEFAULT_SANDBOX_CONFIG, projectRoot },
@@ -119,7 +119,7 @@ runner.test('read_file: should respect maxBytes limit', async () => {
 
 runner.test('read_file: should return E_NOT_FOUND for missing file', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     const tools = new WebGALAgentTools({
       projectRoot,
@@ -138,7 +138,7 @@ runner.test('read_file: should return E_NOT_FOUND for missing file', async () =>
 // write_to_file 测试
 runner.test('write_to_file: dryRun should return diff', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     const tools = new WebGALAgentTools({
       projectRoot,
@@ -162,7 +162,7 @@ runner.test('write_to_file: dryRun should return diff', async () => {
 
 runner.test('write_to_file: actual write should return snapshotId', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     const tools = new WebGALAgentTools({
       projectRoot,
@@ -186,7 +186,7 @@ runner.test('write_to_file: actual write should return snapshotId', async () => 
 
 runner.test('write_to_file: idempotency should prevent duplicate writes', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     const tools = new WebGALAgentTools({
       projectRoot,
@@ -206,7 +206,7 @@ runner.test('write_to_file: idempotency should prevent duplicate writes', async 
       dryRun: false,
       idempotencyKey: 'test-key-1',
     });
-    
+
     assertEqual(result1.snapshotId, result2.snapshotId, 'snapshotId should be same');
   } finally {
     await cleanupTestProject(projectRoot);
@@ -215,7 +215,7 @@ runner.test('write_to_file: idempotency should prevent duplicate writes', async 
 
 runner.test('write_to_file: should detect concurrent modification', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     const tools = new WebGALAgentTools({
       projectRoot,
@@ -255,7 +255,7 @@ runner.test('write_to_file: should detect concurrent modification', async () => 
 // replace_in_file 测试
 runner.test('replace_in_file: should return replacement count', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     const tools = new WebGALAgentTools({
       projectRoot,
@@ -283,7 +283,7 @@ runner.test('replace_in_file: should return replacement count', async () => {
 
 runner.test('replace_in_file: should handle invalid regex', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     const tools = new WebGALAgentTools({
       projectRoot,
@@ -313,7 +313,7 @@ runner.test('replace_in_file: should handle invalid regex', async () => {
 // search_files 测试
 runner.test('search_files: should find matches', async () => {
   const projectRoot = await createTestProject();
-  
+
   try {
     const tools = new WebGALAgentTools({
       projectRoot,
@@ -325,13 +325,59 @@ runner.test('search_files: should find matches', async () => {
       regex: '雪乃',
       filePattern: '**/*.txt',
     });
-    
+
     assertOnlyKeys(result, ['matches'], 'search_files response');
     assert(Array.isArray(result.matches), 'matches should be array');
   } finally {
     await cleanupTestProject(projectRoot);
   }
 });
+
+// runtime config 相关测试
+runner.test('read_file: should enforce default sandbox.maxReadBytes', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    // 创建一个大文件（2MB）
+    await createLargeFile(projectRoot, 'big.txt', 2_000_000);
+
+    const tools = new WebGALAgentTools({
+      projectRoot,
+      sandbox: { ...DEFAULT_SANDBOX_CONFIG, projectRoot, maxReadBytes: 1000 }, // 限制为 1KB
+    });
+
+    await expectToolError(
+      tools.readFile({ path: 'big.txt' }),
+      'E_TOO_LARGE'
+    );
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
+runner.test('write_to_file: should enforce snapshotRetention from tools config', async () => {
+  const projectRoot = await createTestProject();
+
+  try {
+    const tools = new WebGALAgentTools({
+      projectRoot,
+      sandbox: { ...DEFAULT_SANDBOX_CONFIG, projectRoot },
+      snapshotRetention: 2, // 仅保留 2 个快照
+    });
+
+    // 连续写入 3 次，触发快照清理
+    await tools.writeToFile({ path: 'a.txt', content: '1', dryRun: false });
+    await tools.writeToFile({ path: 'a.txt', content: '2', dryRun: false });
+    await tools.writeToFile({ path: 'a.txt', content: '3', dryRun: false });
+
+    const list = await tools.listSnapshots({ path: 'a.txt' });
+    // 只应保留最近的 2 个
+    assertEqual(list.snapshots.length, 2, 'should only keep 2 latest snapshots');
+  } finally {
+    await cleanupTestProject(projectRoot);
+  }
+});
+
 
 export { runner };
 
