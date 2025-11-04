@@ -172,6 +172,13 @@ export class SnapshotManager {
   }
 
   /**
+   * 获取幂等缓存（不触发初始化）
+   */
+  getIdempotencyCache(key: string): string | undefined {
+    return this.idempotencyCache.get(key);
+  }
+
+  /**
    * 保存快照
    */
   async saveSnapshot(

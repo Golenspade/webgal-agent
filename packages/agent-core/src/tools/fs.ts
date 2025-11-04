@@ -262,7 +262,22 @@ export class FileSystemTools {
         };
       }
 
-      // 实际写入模式：检查冲突
+      // 实际写入模式：先检查幂等性
+      if (request.idempotencyKey) {
+        // 确保 SnapshotManager 已初始化（加载幂等缓存）
+        await this.snapshotManager.initialize();
+        const cachedSnapshotId = this.snapshotManager.getIdempotencyCache(request.idempotencyKey);
+        if (cachedSnapshotId) {
+          // 幂等键命中：直接返回缓存的 snapshotId，不写入文件
+          return {
+            applied: true,
+            snapshotId: cachedSnapshotId,
+            bytesWritten: 0, // 未实际写入
+          };
+        }
+      }
+
+      // 检查冲突
       if (fileExists && this.fileHashes.has(request.path)) {
         const expectedHash = this.fileHashes.get(request.path)!;
         const currentHash = this.snapshotManager.computeHash(oldContent);

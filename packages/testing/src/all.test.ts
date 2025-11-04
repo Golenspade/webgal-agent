@@ -11,6 +11,7 @@ import { runner as interactRunner } from './interact.test.js';
 import { runner as mcpRuntimeRunner } from './mcp-runtime.test.js';
 import { runner as lockRunner } from './lock.test.js';
 import { runner as idempotencyRunner } from './idempotency.test.js';
+import { runner as e2eWorkflowsRunner } from './e2e-workflows.test.js';
 
 async function runAllTests() {
   console.log('\n═══════════════════════════════════════════════════════');
@@ -27,6 +28,7 @@ async function runAllTests() {
     { name: 'MCP 运行时可见性', runner: mcpRuntimeRunner },
     { name: '锁机制', runner: lockRunner },
     { name: '幂等持久化', runner: idempotencyRunner },
+    { name: '端到端工作流', runner: e2eWorkflowsRunner },
   ];
 
   let totalPassed = 0;
