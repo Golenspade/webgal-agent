@@ -86,11 +86,13 @@ export class McpProcessManager extends EventEmitter {
 
     console.log('[McpProcessManager] Starting MCP:', mcpBin, args);
 
-    // 启动子进程（使用 tsx 运行 TypeScript 源码）
-    const command = mcpBin.endsWith('.ts') ? 'tsx' : 'node';
-    this.process = spawn(command, [mcpBin, ...args], {
+    const isTs = mcpBin.endsWith('.ts');
+    const monorepoRoot = resolve(__dirname, '../../../..');
+    const command = 'node';
+    const argv = isTs ? ['--import', 'tsx', mcpBin, ...args] : [mcpBin, ...args];
+    this.process = spawn(command, argv, {
       stdio: ['pipe', 'pipe', 'inherit'],
-      cwd: projectRoot,
+      cwd: isTs ? monorepoRoot : projectRoot,
     });
 
     // 监听输出

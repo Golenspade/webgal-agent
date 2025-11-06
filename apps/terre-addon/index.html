@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>WebGAL Agent - Terre Addon (Minimal)</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; }
+      input, button, textarea, select { font-size: 14px; }
+      #log { white-space: pre-wrap; background: #111; color: #ddd; padding: 8px; border-radius: 6px; height: 240px; overflow: auto; }
+      .row { margin-bottom: 8px; }
+      .col { display: inline-block; vertical-align: top; margin-right: 8px; }
+      textarea { width: 100%; height: 180px; }
+      .list { height: 180px; overflow: auto; border: 1px solid #ccc; padding: 6px; border-radius: 4px; min-width: 280px; }
+    </style>
+  </head>
+  <body>
+    <h2>WebGAL Agent - Minimal UI</h2>
+    <div class="row">
+      <label>Project Root:</label>
+      <input id="projectRoot" size="80" placeholder="WebGAL_Terre/packages/terre2/assets/templates/WebGAL_Template" />
+      <button id="startBtn">Start Agent</button>
+      <button id="statusBtn">Get Status</button>
+    </div>
+    <div class="row">
+      <div class="col">
+        <div><strong>Scenes</strong></div>
+        <div id="scenes" class="list"></div>
+        <button id="listScenesBtn">List Scenes</button>
+      </div>
+      <div class="col" style="width: 50%;">
+        <div><strong>Content</strong></div>
+        <textarea id="content"></textarea>
+        <div>
+          <button id="validateBtn">Validate</button>
+          <button id="dryRunBtn">Dry-run Append</button>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div><strong>Log</strong></div>
+      <div id="log"></div>
+    </div>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const log = (msg) => {
+        const el = $('log');
+        el.textContent += (typeof msg === 'string' ? msg : JSON.stringify(msg, null, 2)) + '\n';
+        el.scrollTop = el.scrollHeight;
+      };
+
+      const invoke = (ch, payload) => window.electron.ipcRenderer.invoke(ch, payload);
+
+      $('startBtn').addEventListener('click', async () => {
+        const root = $('projectRoot').value || 'WebGAL_Terre/packages/terre2/assets/templates/WebGAL_Template';
+        try {
+          await invoke('agent:setProjectRoot', { projectRoot: root, options: {} });
+          log('Agent started at ' + root);
+        } catch (e) {
+          log(e?.message || String(e));
+        }
+      });
+
+      $('statusBtn').addEventListener('click', async () => {
+        try {
+          const s = await invoke('agent:getStatus');
+          log(s);
+        } catch (e) {
+          log(e?.message || String(e));
+        }
+      });
+
+      $('listScenesBtn').addEventListener('click', async () => {
+        try {
+          const r = await invoke('agent:listScenes');
+          if (r.error) throw r.error;
+          const list = r.files || r; // depending on tool response shape
+          const scenesEl = $('scenes');
+          scenesEl.innerHTML = '';
+          (list || []).forEach((p) => {
+            const a = document.createElement('div');
+            a.textContent = p;
+            a.style.cursor = 'pointer';
+            a.onclick = async () => {
+              const rf = await invoke('agent:readFile', { path: `game/scene/${p}` });
+              $('content').value = rf.content ?? (rf?.result?.content || '');
+              log({ readFile: p, bytes: (rf.content || '').length });
+            };
+            scenesEl.appendChild(a);
+          });
+          log(r);
+        } catch (e) {
+          log(e?.message || String(e));
+        }
+      });
+
+      $('validateBtn').addEventListener('click', async () => {
+        try {
+          const content = $('content').value;
+          const res = await invoke('agent:validateScript', { content });
+          log(res);
+        } catch (e) {
+          log(e?.message || String(e));
+        }
+      });
+
+      $('dryRunBtn').addEventListener('click', async () => {
+        try {
+          const scenesEl = $('scenes');
+          const first = scenesEl.firstChild?.textContent || 'start.txt';
+          const path = 'game/scene/' + first;
+          const content = ($('content').value || '') + '\n; PREVIEW: 干跑演示';
+          const res = await invoke('agent:writeDryRun', { path, content, mode: 'overwrite' });
+          log(res);
+        } catch (e) {
+          log(e?.message || String(e));
+        }
+      });
+    </script>
+  </body>
+</html>
+
