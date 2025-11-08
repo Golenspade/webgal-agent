@@ -131,6 +131,19 @@ Terre 前端（origine2）
 验收
 - 纯按文档即可完成最小闭环；构建/脚本稳定。
 
+
+### Stage 4.* 进展（已完成）
+- 4.2.5 后端锁校验：Terre 启动 MCP 前检查 `.webgal_agent/agent.lock`；若 `owner != "terre"`（如 `cline`），阻断启动并提示 `[LOCK] E_LOCK_HELD`。
+- 4.7 运行模式（前端）：Agent 面板新增“Terre 托管 | 外部 Cline”切换，持久化保存；外部模式隐藏连接按钮。
+- 4.8 运行时信息卡：展示 `policiesPath` 与 `lock`（owner/startedAt），提供“刷新/复制策略 JSON”。
+- 4.9 快照时间线并发健壮性：引入 `opToken` 与 `listRevision`，避免旧请求覆盖；列表刷新后自动校验“选中项仍存在”。
+- 4.11 外部 Cline 只读观测：外部模式下禁用“确认恢复（Apply）”，仅浏览与预览 Diff，避免与 Cline 并发竞态。
+- 4.13 文档入口：在 RuntimeInfo 头部加入“Cline 集成指南”入口，链接到前端静态说明页与仓库 `docs/CLINE_WEBGAL_INTEGRATION.md`。
+
+验收补充
+- 外部 Cline 模式：时间线可选中/预览 Diff，但 Apply 按钮禁用且显示只读提示；切换模式 UX 清晰。
+- 并发健壮：快速切换/刷新列表不会出现“旧结果覆盖新状态”；操作进行中禁止切换选择。
+
 ---
 
 ## Stage 5 — AI Orchestrator + Chat（可选/后续）

@@ -177,14 +177,14 @@ try {
   await tools.writeToFile({ ... });
 } catch (err) {
   const error = err as any;
-  
+
   console.error('错误码:', error.error.code);
   console.error('错误信息:', error.error.message);
-  
+
   if (error.error.hint) {
     console.error('提示:', error.error.hint);
   }
-  
+
   if (error.error.recoverable) {
     console.log('这是一个可恢复的错误，可以重试');
   }
@@ -280,6 +280,19 @@ try {
 - 如需启用命令执行或浏览器能力：
   - CLI 开关：`--enable-exec` / `--enable-browser`
   - 或在 `policies.json` 打开对应 `enabled` 字段。
+
+
+### 运行模式与锁机制
+- Terre 托管：在 Terre 面板点击“连接”由后端托管 MCP。启动前会检查 `.webgal_agent/agent.lock`，若被外部进程（如 Cline）占用，将以 `[LOCK] E_LOCK_HELD` 拒绝启动。
+- 外部 Cline：由 Cline 启动 MCP，Terre 面板切换到“外部 Cline”模式后仅做只读观测：可浏览快照与预览 Diff，但禁用 Apply（避免与 Cline 并发写入）。
+- 建议：同一时刻仅一端持有锁。若需在 Terre 里进行回滚/写入，请先停止 Cline 或切回“Terre 托管”模式。
+
+### 项目规则（.clinerules）
+- 在项目根创建 `.clinerules/` 目录或 `.clinerules` 单文件，放置团队规则（Markdown）以指导 Cline 的行为。
+- 本仓库提供示例规则（可复制到你的项目）：根目录的 `.clinerules/` 与 `cline/.clinerules/`。
+- 常见约定：仅编辑 `game/**` 文本；先 Dry‑run 预览 Diff，获批再 Apply；变更后 `validate_script`；回滚使用 `list_snapshots/restore_snapshot`。
+
+更多：详见 `docs/CLINE_WEBGAL_INTEGRATION.md` 与 `docs/TROUBLESHOOTING.md`。
 
 WebGAL 使用规范（给 Cline 的提示）
 - 小改优先 `replace_in_file`；全量重写/新建用 `write_to_file`。
