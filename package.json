@@ -1,5 +1,5 @@
 {
-  "name": "webgal-agent-monorepo",
+  "name": "webgal-agent-mcpserver",
   "private": true,
   "version": "0.0.0",
   "description": "WebGAL Agent monorepo (workspaces)",
@@ -12,9 +12,10 @@
     "dev": "echo dev:stub",
     "lint": "echo lint:stub",
     "test": "echo test:stub",
-    "mcp:start": "yarn workspace @webgal-agent/mcp-webgal start --project .",
-    "mcp:dev": "yarn workspace @webgal-agent/mcp-webgal start --project . --enable-exec",
-    "mcp:sandbox": "yarn workspace @webgal-agent/mcp-webgal start --project . --policies ./configs/policies.json"
+    "mcp:start": "yarn workspace @webgal-agent/mcpserver start --project .",
+    "mcp:dev": "yarn workspace @webgal-agent/mcpserver start --project . --enable-exec",
+    "mcp:sandbox": "yarn workspace @webgal-agent/mcpserver start --project . --policies ./configs/policies.json",
+    "mcpserver:start": "yarn workspace @webgal-agent/mcpserver start --project ."
   },
   "devDependencies": {
     "tsx": "^4.20.6"

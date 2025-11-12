@@ -24,6 +24,10 @@ function createWindow() {
 
 app.whenReady().then(() => {
   agentBridge.registerIpcHandlers(ipcMain)
+  // 应用启动时尝试自动拉起 MCP（可通过环境变量控制）
+  agentBridge.autostart().catch((err) => {
+    console.warn('[Main] MCP autostart error:', err?.message || err)
+  })
   createWindow()
 
   app.on('activate', () => {
@@ -48,4 +52,3 @@ process.on('SIGTERM', async () => {
   await agentBridge.cleanup()
   app.quit()
 })
-

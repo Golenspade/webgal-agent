@@ -7,6 +7,8 @@
 import type { IpcMain } from 'electron';
 import { McpProcessManager, McpStartOptions } from './mcp-process-manager.js';
 import { getPreviewPort, buildPreviewUrl } from './port-resolver.js';
+import { existsSync } from 'fs';
+import { join, resolve } from 'path';
 
 export class AgentBridge {
   private mcpManager: McpProcessManager;
@@ -182,6 +184,31 @@ export class AgentBridge {
       }
     });
 
+    // 列出快照
+    ipcMain.handle('agent:listSnapshots', async (_event, args: { path?: string; limit?: number }) => {
+      try {
+        const result = await this.mcpManager.callTool('list_snapshots', {
+          ...(args?.path ? { path: args.path } : {}),
+          ...(args?.limit !== undefined ? { limit: args.limit } : {}),
+        });
+        return result;
+      } catch (error: any) {
+        return { error };
+      }
+    });
+
+    // 恢复快照
+    ipcMain.handle('agent:restoreSnapshot', async (_event, args: { snapshotId: string }) => {
+      try {
+        const result = await this.mcpManager.callTool('restore_snapshot', {
+          snapshotId: args.snapshotId,
+        });
+        return result;
+      } catch (error: any) {
+        return { error };
+      }
+    });
+
     // 获取预览 URL
     ipcMain.handle('agent:previewUrl', async (_event, args?: { scenePath?: string }) => {
       try {
@@ -209,7 +236,79 @@ export class AgentBridge {
   async cleanup() {
     await this.mcpManager.stop();
   }
+
+  /**
+   * 应用启动时自动拉起 MCP（可通过环境变量配置）
+   *
+   * 环境变量：
+   * - WEBGAL_AGENT_AUTOSTART=0|1（默认 1）
+   * - WEBGAL_PROJECT_ROOT=</abs/path>
+   * - WEBGAL_POLICIES=</abs/path/to/policies.json>
+   * - WEBGAL_ENABLE_EXEC=0|1
+   * - WEBGAL_ENABLE_BROWSER=0|1
+   * - WEBGAL_SNAPSHOT_RETENTION=<num>
+   */
+  async autostart() {
+    try {
+      const shouldAutostart = parseBool(process.env.WEBGAL_AGENT_AUTOSTART, true);
+      if (!shouldAutostart) {
+        console.log('[AgentBridge] Autostart disabled by WEBGAL_AGENT_AUTOSTART');
+        return;
+      }
+
+      // 解析项目根：优先环境变量，否则使用当前工作目录
+      const projectRoot = process.env.WEBGAL_PROJECT_ROOT
+        ? resolve(process.env.WEBGAL_PROJECT_ROOT)
+        : process.cwd();
+
+      // 解析策略文件：优先环境变量；否则探测常见位置
+      let policiesPath = process.env.WEBGAL_POLICIES ? resolve(process.env.WEBGAL_POLICIES) : undefined;
+      if (!policiesPath) {
+        const candidates = [
+          join(projectRoot, 'configs', 'policies.json'),
+          join(projectRoot, 'policies.json'),
+        ];
+        for (const p of candidates) {
+          if (existsSync(p)) {
+            policiesPath = p;
+            break;
+          }
+        }
+      }
+
+      const options: McpStartOptions = {
+        policiesPath,
+        enableExec: parseBool(process.env.WEBGAL_ENABLE_EXEC, false),
+        enableBrowser: parseBool(process.env.WEBGAL_ENABLE_BROWSER, false),
+        snapshotRetention: parseNumber(process.env.WEBGAL_SNAPSHOT_RETENTION),
+      };
+
+      console.log('[AgentBridge] Autostart MCP with projectRoot:', projectRoot, 'options:', {
+        ...options,
+        // 避免在日志中泄露完整路径或敏感信息（这里只是示例，按需裁剪）
+      });
+
+      await this.mcpManager.start(projectRoot, options);
+      console.log('[AgentBridge] MCP started');
+    } catch (error: any) {
+      console.warn('[AgentBridge] MCP autostart failed:', error?.message || error);
+    }
+  }
 }
 
 // 导出单例
 export const agentBridge = new AgentBridge();
+
+function parseBool(v: string | undefined, defaultValue = false): boolean {
+  if (v === undefined) return defaultValue;
+  const s = String(v).toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(s)) return true;
+  if (['0', 'false', 'no', 'off'].includes(s)) return false;
+  return defaultValue;
+}
+
+function parseNumber(v: string | undefined): number | undefined {
+  if (!v) return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}

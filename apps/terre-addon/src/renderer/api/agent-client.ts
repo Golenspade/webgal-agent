@@ -14,6 +14,8 @@ import type {
   ReplaceInFileResponse,
   WriteToFileResponse,
   ListFilesResponse,
+  ListSnapshotsResponse,
+  RestoreSnapshotResponse,
 } from '@webgal-agent/agent-core/types';
 
 // 类型定义（与 CONTRACTS.md 对齐）
@@ -38,6 +40,9 @@ export type WriteApplyResult = { applied: true; snapshotId: string; bytesWritten
 export type ValidateResult = ValidateScriptResponse;
 
 export type ProjectResources = ListProjectResourcesResponse;
+
+export type ListSnapshotsResult = ListSnapshotsResponse;
+export type RestoreSnapshotResult = RestoreSnapshotResponse;
 
 export interface AgentStatus {
   running: boolean;
@@ -172,6 +177,28 @@ export class AgentClient {
    */
   async listProjectResources(): Promise<ProjectResources> {
     const result = await this.invoke<ProjectResources | ToolError>('agent:listProjectResources');
+    if ('error' in result) {
+      throw result.error;
+    }
+    return result;
+  }
+
+  /**
+   * 列出快照
+   */
+  async listSnapshots(args?: { path?: string; limit?: number }): Promise<ListSnapshotsResult> {
+    const result = await this.invoke<ListSnapshotsResult | ToolError>('agent:listSnapshots', args || {});
+    if ('error' in result) {
+      throw result.error;
+    }
+    return result;
+  }
+
+  /**
+   * 恢复快照
+   */
+  async restoreSnapshot(snapshotId: string): Promise<RestoreSnapshotResult> {
+    const result = await this.invoke<RestoreSnapshotResult | ToolError>('agent:restoreSnapshot', { snapshotId });
     if ('error' in result) {
       throw result.error;
     }

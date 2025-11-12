@@ -7,4 +7,6 @@ dist/
 .nyc_output/
 coverage/
 .env*
+**/.webgal_agent/
+**/.webgal_agent/**
 

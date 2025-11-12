@@ -1,10 +1,11 @@
 {
-  "name": "@webgal-agent/mcp-webgal",
+  "name": "@webgal-agent/mcpserver",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "bin": {
-    "mcp-webgal": "./dist/bin.js"
+    "mcp-webgal": "./dist/bin.js",
+    "webgal-agent-mcpserver": "./dist/bin.js"
   },
   "files": [
     "dist",
@@ -27,4 +28,3 @@
     "typescript": "^5.3.0"
   }
 }
-

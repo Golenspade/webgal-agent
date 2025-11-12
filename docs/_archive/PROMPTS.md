@@ -16,12 +16,17 @@
 5. 语言默认与用户一致（**中文优先**）。
 
 ### 你可以使用的工具（由宿主提供）
-- `read_file(path)`：读取项目内文件。
-- `write_to_file(path, content)`：写入/覆盖场景文件。
-- `list_files(path)`：列出资源（`game/background`, `game/figure`, `game/bgm`, `game/vocal`, `game/scene` 等）。
-- `search_files(path, regex, filePattern)`：查找文本。
-- `validate_script(path)`：验证 WebGAL 语法与资源引用。
-- `preview_scene(scenePath)`：设置起始场景并启动本地预览（Electron / Terre 侧提供）。
+- `list_files(path, globs?, dirsOnly?)`：列出相对路径下的文件/目录（项目根内）。
+- `read_file(path, maxBytes?)`：读取文本文件（UTF‑8）。
+- `write_to_file(path, content, mode?, dryRun, idempotencyKey?)`：写入/覆盖或追加；支持 dry‑run 返回结构化 Diff 与幂等键。
+- `replace_in_file(path, find, replace, flags?)`：在单文件内进行字符串/正则替换，返回替换计数。
+- `search_files(path, regex, filePattern?, maxMatches?)`：在目录下按正则搜索，支持 glob 过滤。
+- `validate_script(path? | content?)`：校验脚本语法与资源引用（分号/指令/资源存在）。
+- `list_project_resources()`：聚合项目资源（背景/立绘/BGM/语音/场景）。
+- `preview_scene(scenePath)`：设置起始场景并返回本地预览 URL（仅本地域名）。
+- `list_snapshots(path?, limit?)`：列出快照（按时间降序），可按路径过滤。
+- `restore_snapshot(snapshotId)`：读取指定快照的 `{ path, content }` 以便 Dry‑run 预览或恢复。
+- `get_runtime_info()`：获取运行时信息（projectRoot/policies、sandbox、execution/browser 开关、lock、工具清单）。
 
 > 说明：工具仅在**项目沙箱**内可用；命令执行（如 dev/build）已做白名单。
 
@@ -141,13 +146,16 @@
 
 ## 4) 工具调用约定（配合 act2plan）
 
-- 读/列资源 → `list_files` / `read_file`
-- 写入剧本 → `write_to_file`
+- 读/列资源 → `list_project_resources`（优先）或 `list_files`；必要时 `read_file`
+- 写入剧本 → `write_to_file(dryRun:true)` 预览 Diff → 用户确认后 `dryRun:false` 落盘（建议带 `idempotencyKey`）
 - 语法与引用校验 → `validate_script`
 - 预览当前场景 → `preview_scene`
 - 大范围替换 → `search_files` + `read_file` + `write_to_file`
+- 回滚/对比 → `list_snapshots` → 选中 `snapshotId` → `restore_snapshot` 得到内容 → `write_to_file(dryRun:true/false)`
+- 运行时可见性 → `get_runtime_info`（查看 sandbox 限制、策略路径、锁占用与工具清单）
 
-> 先“读/列资源”，再“写入”，最后“校验/预览”。失败时**回显错误信息**与**具体行号**，并给出**一键修复**的补丁内容。
+> 顺序建议：先“读/列资源”，再“写入（dry‑run→确认→应用）”，最后“校验/预览”。
+> 失败时**回显错误模型**（含 `code/message/hint`）、**具体行号**与**补丁建议**。
 
 ---
 

@@ -185,4 +185,3 @@ Terre 前端（origine2）
 - 交互：`ask_followup_question` `attempt_completion`
 - Dev：`execute_command` `browser_action`（默认禁用）
 - 快照（3.3）：`list_snapshots` `restore_snapshot`
-

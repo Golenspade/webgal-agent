@@ -2,7 +2,7 @@
 
 ---
 
-# WebGAL Agent (Cline-style Plan→Act, local-only)
+# webgal-agent-mcpserver
 
 **目录说明**
 - 根配置
@@ -22,7 +22,7 @@
     - `src/orchestrator/machine.ts`：计划→生成→校验→预览→写入→快照/回滚（占位）
     - `src/prompt/builder.ts`、`src/tools/*`、`src/policies/guard.ts`、`src/providers/*`（占位）
   - `packages/tool-bridge/`：环境桥（FS 沙箱、命令白名单、本地浏览器动作，占位）
-  - `packages/mcp-webgal/`：（可选）MCP 服务器，暴露 `validate_script`/`list_project_resources` 等（占位）
+  - `packages/mcp-webgal/`（目录名保留）：MCP 服务器（包名：`@webgal-agent/mcpserver`），暴露 `validate_script`/`list_project_resources` 等
   - `packages/ui-panel/`：UI 组件库（`AgentPanel`、Diff、回滚，占位）
   - `packages/schemas/`：与 CONTRACTS 对齐的 JSON Schemas（占位）
   - `packages/testing/`：E2E 与回归样例（占位）
@@ -30,10 +30,11 @@
 
 Workspaces
 - apps：`@webgal-agent/terre-addon`、`@webgal-agent/dev-sandbox`
-- packages：`@webgal-agent/agent-core`、`@webgal-agent/tool-bridge`、`@webgal-agent/mcp-webgal`、`@webgal-agent/ui-panel`、`@webgal-agent/schemas`、`@webgal-agent/testing`
+- packages：`@webgal-agent/agent-core`、`@webgal-agent/tool-bridge`、`@webgal-agent/mcpserver`、`@webgal-agent/ui-panel`、`@webgal-agent/schemas`、`@webgal-agent/testing`
 
-> 用自然语言写 WebGAL 脚本，**沿用 Cline 的 Plan→Act 决策循环**，不改架构。
-> **纯本地**：文件读写/预览都在本机完成；联网仅用于 **LLM API**（BYOK）与 Cline 的必要 `fetch`。
+> 用自然语言写 WebGAL 脚本（Plan→Act 思路保留）。
+> 已移除 VSCode/Cline 扩展相关部分，仅保留本地 MCP + Electron 面板（Terre 插件）。
+> **纯本地**：文件读写/预览都在本机完成；联网仅用于 **LLM API**（BYOK，可选）。
 
 <p align="center">
   <img alt="demo" src="./docs/demo.gif" height="220"/>
@@ -41,7 +42,7 @@ Workspaces
 
 ## ✨ 特性
 
-* **架构不变**：Cline 的 **Plan → Act** 递归循环 + 工具选择；先计划（用户确认）再执行
+* **Plan→Act 思路保留**：先计划（用户确认）再执行（WebGAL 场景编辑）
 * **纯本地**：不引入任何云端/远程沙箱；文件操作仅限用户选定的项目根目录
 * **工具即能力**：读/写/替换/搜索/列目录 +（可选）本地 MCP 校验与预览封装
 * **人-在-回路**：计划确认 + 写入前 **Diff 必经** + 命令白名单（仅开发者模式）

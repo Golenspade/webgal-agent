@@ -5,6 +5,7 @@
 
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
+import * as fsSync from 'node:fs';
 
 /**
  * 错误码枚举（与 CONTRACTS.md 0.2 对齐）
@@ -91,22 +92,23 @@ export class FsSandbox {
     }
 
     // 规范化路径
-    const absolutePath = path.resolve(this.config.projectRoot, relativePath);
+    const projectRootReal = safeRealpath(this.config.projectRoot) || this.config.projectRoot;
+    const absolutePath = path.resolve(projectRootReal, relativePath);
     const normalizedPath = path.normalize(absolutePath);
 
     // 检查是否在项目根内
-    if (!normalizedPath.startsWith(this.config.projectRoot + path.sep) &&
-        normalizedPath !== this.config.projectRoot) {
+    if (!normalizedPath.startsWith(projectRootReal + path.sep) &&
+        normalizedPath !== projectRootReal) {
       throw this.createError(
         ErrorCode.E_DENY_PATH,
         `Path escapes project root: ${relativePath}`,
-        { path: relativePath, projectRoot: this.config.projectRoot },
+        { path: relativePath, projectRoot: projectRootReal },
         'Ensure path stays within project directory'
       );
     }
 
     // 检查禁止目录
-    const relativeToRoot = path.relative(this.config.projectRoot, normalizedPath);
+    const relativeToRoot = path.relative(projectRootReal, normalizedPath);
     const pathParts = relativeToRoot.split(path.sep);
 
     for (const forbidden of this.config.forbiddenDirs) {
@@ -118,6 +120,26 @@ export class FsSandbox {
           `Avoid accessing ${forbidden} directory`
         );
       }
+    }
+
+    // 符号链接逃逸检查：若目标存在，校验 realpath；若不存在，校验父目录 realpath
+    try {
+      let targetForCheck = normalizedPath;
+      if (!fsSync.existsSync(normalizedPath)) {
+        targetForCheck = path.dirname(normalizedPath);
+      }
+      const real = safeRealpath(targetForCheck);
+      if (real && !real.startsWith(projectRootReal + path.sep) && real !== projectRootReal) {
+        throw this.createError(
+          ErrorCode.E_DENY_PATH,
+          'Symlink escapes sandbox',
+          { path: relativePath, resolved: real, projectRoot: projectRootReal },
+          'Avoid symlinks that point outside the project root'
+        );
+      }
+    } catch (e) {
+      if ((e as any).error) throw e;
+      // 其余错误忽略，保守通过 normalized 校验
     }
 
     return normalizedPath;
@@ -177,5 +199,15 @@ export class FsSandbox {
    */
   getConfig(): Readonly<SandboxConfig> {
     return { ...this.config };
+  }
+}
+
+function safeRealpath(p: string): string | null {
+  try {
+    // Prefer native realpath if available
+    const real = (fsSync as any).realpathSync?.native ? (fsSync as any).realpathSync.native(p) : fsSync.realpathSync(p);
+    return real;
+  } catch {
+    return null;
   }
 }

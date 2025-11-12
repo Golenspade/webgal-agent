@@ -37,6 +37,26 @@ function waitForOutput(proc: ChildProcess, text: string, timeoutMs = 5000): Prom
   });
 }
 
+// 兼容旧/新日志前缀，等待锁获取日志
+function waitForLockAcquired(proc: ChildProcess, timeoutMs = 5000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`Timeout waiting for lock acquired log`));
+    }, timeoutMs);
+
+    const onData = (data: Buffer) => {
+      const s = data.toString();
+      if (s.includes('[LOCK] acquired') || s.includes('🔒 锁状态: ✅ 已获取')) {
+        clearTimeout(timeout);
+        proc.stderr?.off('data', onData);
+        resolve();
+      }
+    };
+
+    proc.stderr?.on('data', onData);
+  });
+}
+
 // 测试 1: 单实例正常启动和退出
 runner.test('单实例正常启动和退出', async () => {
   const projectRoot = join(process.cwd(), '../../apps/dev-sandbox');
@@ -52,7 +72,7 @@ runner.test('单实例正常启动和退出', async () => {
 
   try {
     // 等待启动成功
-    await waitForOutput(proc, '🔒 锁状态: ✅ 已获取');
+    await waitForLockAcquired(proc);
 
     // 验证锁文件存在
     const lockContent = await fs.readFile(lockPath, 'utf-8');
@@ -123,7 +143,7 @@ runner.test('并发启动冲突', async () => {
   
   try {
     // 等待第一个实例启动成功
-    await waitForOutput(proc1, '🔒 锁状态: ✅ 已获取');
+    await waitForLockAcquired(proc1);
 
     // 尝试启动第二个实例
     const proc2 = spawnMcp(projectRoot);
@@ -173,7 +193,7 @@ runner.test('过期锁自动清理', async () => {
   
   try {
     // 等待启动成功
-    await waitForOutput(proc, '🔒 锁状态: ✅ 已获取');
+    await waitForLockAcquired(proc);
 
     // 验证锁文件已更新为新进程
     const lockContent = await fs.readFile(lockPath, 'utf-8');

@@ -13,11 +13,10 @@
     "electron:debug": "ELECTRON_ENABLE_LOGGING=1 ELECTRON_ENABLE_STACK_DUMPING=1 NODE_OPTIONS=--import=tsx electron ./src/main/index.ts"
   },
   "dependencies": {
-    "@webgal-agent/mcp-webgal": "workspace:*"
+    "@webgal-agent/mcpserver": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "electron": "^28.0.0"
   }
 }
-

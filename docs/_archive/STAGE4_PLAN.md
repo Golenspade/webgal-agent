@@ -298,4 +298,3 @@ CLI 启动输出简明（项目根、retention、exec/browser 开关、tools 数
 - [ ] Terre 与 stdio 路径三条 e2e 测试通过（小改/全量/回滚）
 - [ ] 前端运行模式提示清晰；只读/回滚策略明确；错误提示带有上下文数值
 - [ ] dist 构建可直接分发；Cline 集成按文档可一键接入
-

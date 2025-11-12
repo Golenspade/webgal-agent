@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "contractVersion": "1.0.0",
-  "mode": "cline",
+  "mode": "webgal",
   "sandbox": {
     "root": "${projectRoot}",
     "forbiddenDirs": [".git", "node_modules", ".env"],
@@ -69,4 +69,3 @@
     "logLevel": "info"
   }
 }
-

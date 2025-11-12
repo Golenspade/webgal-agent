@@ -9,6 +9,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { WebGALAgentTools } from '@webgal-agent/agent-core/tools';
@@ -18,20 +20,33 @@ import { checkLock } from './lock-manager.js';
 export interface ServerConfig extends ResolvedConfig {
   projectRoot: string;
   policiesPath?: string;
+  verbose?: boolean;
 }
 
 /**
  * 创建 MCP 服务器实例
  */
 export async function createMCPServer(config: ServerConfig) {
+  // 结构化日志工具
+  const log = (level: 'INFO'|'ERROR'|'DEBUG', component: string, message: string, data?: Record<string, unknown>) => {
+    const entry: any = { ts: new Date().toISOString(), level, component, message };
+    if (data) entry.data = data;
+    try {
+      console.error(JSON.stringify(entry));
+    } catch {
+      console.error(`[${level}] [${component}] ${message}`);
+    }
+  };
+
   const server = new Server(
     {
-      name: 'webgal-agent',
+      name: 'webgal-agent-mcpserver',
       version: '0.1.0',
     },
     {
       capabilities: {
         tools: {},
+        prompts: {},
       },
     }
   );
@@ -213,6 +228,96 @@ export async function createMCPServer(config: ServerConfig) {
       },
     },
   ];
+  // Verbose: report registered tools count
+  if (config.verbose) {
+    log('INFO', 'MCP', 'tools registered', { count: toolDefinitions.length });
+  }
+
+  // ===== Prompts capability =====
+  const promptRegistry = [
+    {
+      name: 'webgal.create_scene',
+      description: 'Create a new WebGAL scene script with background, figures, and dialogue',
+      arguments: [
+        { name: 'sceneName', description: 'Scene file name, e.g., beach_date.txt', required: true },
+      ],
+    },
+    {
+      name: 'webgal.refactor_scene',
+      description: 'Refactor or improve an existing WebGAL scene file',
+      arguments: [
+        { name: 'path', description: 'Scene file path under game/scene', required: true },
+        { name: 'goal', description: 'Refactor goal, e.g., add -next, adjust pacing', required: false },
+      ],
+    },
+    {
+      name: 'webgal.fix_validation',
+      description: 'Fix validate_script diagnostics for a given scene',
+      arguments: [
+        { name: 'path', description: 'Scene file path', required: true },
+        { name: 'diagnostics', description: 'JSON diagnostics array from validate_script', required: false },
+      ],
+    },
+  ] as const;
+
+  server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+    prompts: promptRegistry.map((p) => ({
+      name: p.name,
+      description: p.description,
+      arguments: p.arguments,
+    })),
+  }));
+
+  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params as any;
+    const notFound = () => {
+      throw new Error(`Unknown prompt: ${name}`);
+    };
+
+    switch (name) {
+      case 'webgal.create_scene': {
+        const sceneName = args?.sceneName || 'new_scene.txt';
+        return {
+          description: 'Create a WebGAL scene script',
+          messages: [
+            {
+              role: 'system',
+              content: { type: 'text', text: 'You are a WebGAL script assistant. Output only valid WebGAL lines using English colon and semicolon.' },
+            },
+            {
+              role: 'user',
+              content: { type: 'text', text: `Create scene ${sceneName} with minimal dialogue and proper -next usage where needed.` },
+            },
+          ],
+        };
+      }
+      case 'webgal.refactor_scene': {
+        const path = args?.path || 'game/scene/start.txt';
+        const goal = args?.goal || 'improve pacing and add -next after stage changes';
+        return {
+          description: 'Refactor WebGAL scene',
+          messages: [
+            { role: 'system', content: { type: 'text', text: 'You are a WebGAL refactoring assistant. Keep syntax valid and minimal changes.' } },
+            { role: 'user', content: { type: 'text', text: `Refactor ${path}. Goal: ${goal}. Show a suggested patch or replacement lines.` } },
+          ],
+        };
+      }
+      case 'webgal.fix_validation': {
+        const path = args?.path || 'game/scene/start.txt';
+        const diagnostics = args?.diagnostics ? JSON.stringify(args.diagnostics) : '[]';
+        return {
+          description: 'Fix validation diagnostics',
+          messages: [
+            { role: 'system', content: { type: 'text', text: 'You fix WebGAL validation issues: semicolons, allowed commands, resource existence.' } },
+            { role: 'user', content: { type: 'text', text: `File: ${path}\nDiagnostics: ${diagnostics}\nReturn corrected lines only.` } },
+          ],
+        };
+      }
+      default:
+        return notFound();
+    }
+  });
+
 
   // 注册 list_tools 处理器
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -222,46 +327,68 @@ export async function createMCPServer(config: ServerConfig) {
   // 注册 call_tool 处理器
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
+    const opId = `op_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const started = Date.now();
+    const withTimeout = async <T>(p: Promise<T>, timeoutMs = 30000): Promise<T> => {
+      return await Promise.race([
+        p,
+        new Promise<T>((_, reject) => setTimeout(() => reject({
+          error: { code: 'E_TIMEOUT', message: `Operation timed out: ${name}`, details: { timeoutMs, opId } }
+        }), timeoutMs))
+      ]);
+    };
 
     try {
       let result: any;
 
       switch (name) {
         case 'list_files':
-          result = await tools.listFiles(args as any);
+          log('INFO', 'tool', 'start', { opId, name });
+          result = await withTimeout(tools.listFiles(args as any));
           break;
         case 'read_file':
-          result = await tools.readFile(args as any);
+          log('INFO', 'tool', 'start', { opId, name });
+          result = await withTimeout(tools.readFile(args as any));
           break;
         case 'write_to_file':
-          result = await tools.writeToFile(args as any);
+          log('INFO', 'tool', 'start', { opId, name });
+          result = await withTimeout(tools.writeToFile(args as any));
           break;
         case 'replace_in_file':
-          result = await tools.replaceInFile(args as any);
+          log('INFO', 'tool', 'start', { opId, name });
+          result = await withTimeout(tools.replaceInFile(args as any));
           break;
         case 'search_files':
-          result = await tools.searchFiles(args as any);
+          log('INFO', 'tool', 'start', { opId, name });
+          result = await withTimeout(tools.searchFiles(args as any), 45000);
           break;
         case 'validate_script':
-          result = await tools.validateScript(args as any);
+          log('INFO', 'tool', 'start', { opId, name });
+          result = await withTimeout(tools.validateScript(args as any));
           break;
         case 'list_project_resources':
-          result = await tools.listProjectResources();
+          log('INFO', 'tool', 'start', { opId, name });
+          result = await withTimeout(tools.listProjectResources());
           break;
         case 'list_snapshots':
-          result = await tools.listSnapshots(args as any);
+          log('INFO', 'tool', 'start', { opId, name });
+          result = await withTimeout(tools.listSnapshots(args as any));
           break;
         case 'restore_snapshot':
-          result = await tools.restoreSnapshot(args as any);
+          log('INFO', 'tool', 'start', { opId, name });
+          result = await withTimeout(tools.restoreSnapshot(args as any));
           break;
         case 'preview_scene':
-          result = await tools.previewScene(args as any);
+          log('INFO', 'tool', 'start', { opId, name });
+          result = await withTimeout(tools.previewScene(args as any), 60000);
           break;
         case 'ask_followup_question':
-          result = await tools.askFollowupQuestion(args as any);
+          log('INFO', 'tool', 'start', { opId, name });
+          result = await withTimeout(tools.askFollowupQuestion(args as any));
           break;
         case 'attempt_completion':
-          result = await tools.attemptCompletion(args as any);
+          log('INFO', 'tool', 'start', { opId, name });
+          result = await withTimeout(tools.attemptCompletion(args as any));
           break;
         case 'get_runtime_info':
           // 直接在 MCP 层返回运行时信息（不涉及工具层）
@@ -294,7 +421,7 @@ export async function createMCPServer(config: ServerConfig) {
             ...(lock && { lock }),
             tools: toolDefinitions.map((t) => t.name),
             server: {
-              name: 'webgal-agent',
+              name: 'webgal-agent-mcpserver',
               version: '0.1.0',
             },
           };
@@ -303,6 +430,8 @@ export async function createMCPServer(config: ServerConfig) {
           throw new Error(`Unknown tool: ${name}`);
       }
 
+      const duration = Date.now() - started;
+      log('INFO', 'tool', 'success', { opId, name, durationMs: duration });
       return {
         content: [
           {
@@ -312,6 +441,8 @@ export async function createMCPServer(config: ServerConfig) {
         ],
       };
     } catch (error: any) {
+      const duration = Date.now() - started;
+      log('ERROR', 'tool', 'error', { opId, name, durationMs: duration, error: (error?.error || error)?.message || String(error) });
       // 统一错误处理：符合 CONTRACTS.md 错误模型
       const toolError = (error && error.error)
         ? error
@@ -320,6 +451,7 @@ export async function createMCPServer(config: ServerConfig) {
               code: 'E_INTERNAL' as any,
               message: error?.message || 'Internal error',
               details: error?.stack,
+              opId,
             },
           };
 
@@ -347,5 +479,5 @@ export async function startServer(config: ServerConfig) {
   await server.connect(transport);
 
   // 启动信息已在 bin.ts 中输出，这里仅保留协议层日志
-  console.error(`✅ MCP Server ready (stdio)`);
+  console.error(`[MCP] ready (stdio)`);
 }
