@@ -27,6 +27,13 @@ export interface PolicyFile {
   sandbox?: Partial<Omit<SandboxConfig, 'projectRoot'>>;
   execution?: Partial<ExecutionConfig> & { enabled?: boolean };
   browser?: Partial<BrowserConfig> & { enabled?: boolean };
+  models?: {
+    provider?: 'anthropic' | 'openai' | 'qwen' | 'deepseek';
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    baseURL?: string; // 用于 OpenRouter 或自定义端点
+  };
 }
 
 export interface CliOverrides {
@@ -50,6 +57,13 @@ export interface CliOverrides {
     timeoutMs?: number;
     screenshotDir?: string;
   };
+  models?: {
+    provider?: 'anthropic' | 'openai' | 'qwen' | 'deepseek';
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    baseURL?: string;
+  };
 }
 
 export interface ResolvedConfig {
@@ -58,6 +72,13 @@ export interface ResolvedConfig {
   sandbox: Omit<SandboxConfig, 'projectRoot'>;
   execution?: ExecutionConfig;
   browser?: BrowserConfig;
+  models?: {
+    provider: 'anthropic' | 'openai' | 'qwen' | 'deepseek';
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    baseURL?: string;
+  };
 }
 
 // ============ 工具函数 ============
@@ -211,12 +232,25 @@ export function mergeConfig(options: {
       }
     : undefined;
 
+  // Models 配置（可选）
+  const models: ResolvedConfig['models'] | undefined =
+    cli.models?.provider || policies?.models?.provider
+      ? {
+          provider: (cli.models?.provider ?? policies?.models?.provider) as 'anthropic' | 'openai' | 'qwen' | 'deepseek',
+          model: cli.models?.model ?? policies?.models?.model,
+          temperature: cli.models?.temperature ?? policies?.models?.temperature ?? 0.4,
+          maxTokens: cli.models?.maxTokens ?? policies?.models?.maxTokens ?? 4000,
+          baseURL: cli.models?.baseURL ?? policies?.models?.baseURL,
+        }
+      : undefined;
+
   return {
     snapshotRetention,
     idempotency,
     sandbox,
     execution,
     browser,
+    models,
   };
 }
 

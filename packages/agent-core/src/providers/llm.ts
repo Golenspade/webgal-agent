@@ -1,6 +1,8 @@
 /**
  * LLM Provider - 支持多种LLM API的提供者
  * BYOK (Bring Your Own Key) 模式
+ * 支持的提供商：anthropic, openai, qwen(阿里云), deepseek
+ * qwen 和 deepseek 使用 OpenAI 兼容的 API 格式
  */
 
 import { Anthropic } from '@anthropic-ai/sdk';
@@ -12,7 +14,7 @@ export interface LLMConfig {
   model?: string;
   temperature?: number;
   maxTokens?: number;
-  baseURL?: string; // 用于支持自定义端点（如OpenRouter）
+  baseURL?: string; // 用于支持自定义端点（如OpenRouter、阿里云、DeepSeek）
 }
 
 export interface LLMMessage {
@@ -43,7 +45,8 @@ export class LLMProvider {
 
     if (this.config.provider === 'anthropic') {
       this.anthropic = new Anthropic({ apiKey: this.config.apiKey });
-    } else if (this.config.provider === 'openai') {
+    } else if (this.config.provider === 'openai' || this.config.provider === 'qwen' || this.config.provider === 'deepseek') {
+      // OpenAI 兼容的提供商（OpenAI, Qwen, DeepSeek）共用同一个 OpenAI client
       this.openai = new OpenAI({
         apiKey: this.config.apiKey,
         baseURL: this.config.baseURL,

@@ -89,6 +89,18 @@ function parseArgs(): CLIArgs {
     } else if (arg === '--browser-screenshot-dir') {
       args.browserScreenshotDir = argv[++i];
     }
+    // Models 覆盖
+    else if (arg === '--model-provider') {
+      args.models = { ...args.models, provider: argv[++i] as any };
+    } else if (arg === '--model-name') {
+      args.models = { ...args.models, model: argv[++i] };
+    } else if (arg === '--model-temperature') {
+      args.models = { ...args.models, temperature: parseFloat(argv[++i]) };
+    } else if (arg === '--model-max-tokens') {
+      args.models = { ...args.models, maxTokens: parseInt(argv[++i], 10) };
+    } else if (arg === '--model-base-url') {
+      args.models = { ...args.models, baseURL: argv[++i] };
+    }
   }
 
   return args;
@@ -129,6 +141,13 @@ Browser 覆盖（需 --enable-browser）:
   --browser-allowed-hosts <hosts>   允许主机（逗号分隔，默认: localhost,127.0.0.1）
   --browser-timeout <ms>            超时毫秒数（默认: 30000）
   --browser-screenshot-dir <path>   截图目录（默认: .webgal_agent/screenshots）
+
+Models 覆盖（LLM 配置）:
+  --model-provider <name>           LLM 提供商: anthropic, openai, qwen, deepseek
+  --model-name <name>               模型名称（如: claude-3-5-sonnet, gpt-4o, qwen-max）
+  --model-temperature <num>         Temperature（默认: 0.4）
+  --model-max-tokens <num>          最大输出 token 数（默认: 4000）
+  --model-base-url <url>            自定义 API 端点（如: https://openrouter.ai/api/v1）
 
  其他:
   --help, -h                        显示帮助信息
