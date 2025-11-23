@@ -31,12 +31,16 @@
   },
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "cli": "tsx src/cli.ts",
+    "cli:help": "tsx src/cli.ts --help"
   },
   "dependencies": {
-    "@webgal-agent/tool-bridge": "*",
+    "@anthropic-ai/sdk": "^0.30.0",
     "@types/node": "^20.0.0",
-    "glob": "^10.0.0"
+    "@webgal-agent/tool-bridge": "*",
+    "glob": "^10.0.0",
+    "openai": "^4.0.0"
   },
   "devDependencies": {
     "typescript": "^5.0.0"
