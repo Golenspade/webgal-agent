@@ -6,7 +6,29 @@ dist/
 .parcel-cache/
 .nyc_output/
 coverage/
+
+# 环境变量和敏感文件
 .env*
+*.local
+.env.local
+.env.*.local
+
+# 快照和运行时数据
 **/.webgal_agent/
 **/.webgal_agent/**
 
+# IDE
+.idea/
+*.swp
+*.swo
+
+# 日志
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 临时文件
+*.tmp
+*.temp
+.cache/
