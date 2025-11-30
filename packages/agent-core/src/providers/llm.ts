@@ -18,12 +18,39 @@ export interface LLMConfig {
 }
 
 export interface LLMMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
+  name?: string; // for tool messages (function name)
+  tool_call_id?: string; // for tool result messages
+  tool_calls?: LLMToolCall[]; // for assistant messages with tool calls
+}
+
+export interface LLMTool {
+  type: 'function';
+  function: {
+    name: string;
+    description?: string;
+    parameters?: Record<string, unknown>;
+  };
+}
+
+export interface LLMToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string; // JSON string of arguments
+  };
+}
+
+export interface LLMCallOptions {
+  tools?: LLMTool[];
+  tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
 }
 
 export interface LLMResponse {
   content: string;
+  toolCalls?: LLMToolCall[];
   usage?: {
     inputTokens: number;
     outputTokens: number;
@@ -57,17 +84,17 @@ export class LLMProvider {
   /**
    * 调用LLM生成响应
    */
-  async call(messages: LLMMessage[]): Promise<LLMResponse> {
+  async call(messages: LLMMessage[], options?: LLMCallOptions): Promise<LLMResponse> {
     try {
       switch (this.config.provider) {
         case 'anthropic':
-          return await this.callClaude(messages);
+          return await this.callClaude(messages, options);
         case 'openai':
-          return await this.callGPT(messages);
+          return await this.callGPT(messages, options);
         case 'qwen':
         case 'deepseek':
           // 这些可以通过OpenAI兼容的API格式调用
-          return await this.callGPT(messages);
+          return await this.callGPT(messages, options);
         default:
           throw new Error(`Unsupported provider: ${this.config.provider}`);
       }
@@ -79,7 +106,7 @@ export class LLMProvider {
   /**
    * 调用Claude API
    */
-  private async callClaude(messages: LLMMessage[]): Promise<LLMResponse> {
+  private async callClaude(messages: LLMMessage[], options?: LLMCallOptions): Promise<LLMResponse> {
     if (!this.anthropic) {
       throw new Error('Anthropic client not initialized');
     }
@@ -87,6 +114,17 @@ export class LLMProvider {
     // 分离system message
     const systemMessage = messages.find(m => m.role === 'system')?.content;
     const userMessages = messages.filter(m => m.role !== 'system');
+
+    // 转换工具格式为 Anthropic 格式
+    const tools = options?.tools?.map(t => ({
+      name: t.function.name,
+      description: t.function.description || '',
+      input_schema: {
+        type: 'object' as const,
+        properties: (t.function.parameters as Record<string, unknown>)?.properties || {},
+        required: (t.function.parameters as Record<string, unknown>)?.required || [],
+      },
+    }));
 
     const response = await this.anthropic.messages.create({
       model: this.config.model || 'claude-3-5-sonnet-20241022',
@@ -97,15 +135,31 @@ export class LLMProvider {
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
+      ...(tools && tools.length > 0 ? { tools } : {}),
     });
 
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type from Claude');
+    // 处理工具调用
+    const toolCalls: LLMToolCall[] = [];
+    let textContent = '';
+
+    for (const block of response.content) {
+      if (block.type === 'text') {
+        textContent += block.text;
+      } else if (block.type === 'tool_use') {
+        toolCalls.push({
+          id: block.id,
+          type: 'function',
+          function: {
+            name: block.name,
+            arguments: JSON.stringify(block.input),
+          },
+        });
+      }
     }
 
     return {
-      content: content.text,
+      content: textContent,
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
       usage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
@@ -117,25 +171,47 @@ export class LLMProvider {
   /**
    * 调用GPT API（兼容OpenAI格式）
    */
-  private async callGPT(messages: LLMMessage[]): Promise<LLMResponse> {
+  private async callGPT(messages: LLMMessage[], options?: LLMCallOptions): Promise<LLMResponse> {
     if (!this.openai) {
       throw new Error('OpenAI client not initialized');
     }
 
-    const response = await this.openai.chat.completions.create({
+    // 构建请求参数
+    const requestParams: OpenAI.Chat.ChatCompletionCreateParams = {
       model: this.config.model || 'gpt-4-turbo-preview',
       messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
       temperature: this.config.temperature || 0.4,
       max_tokens: this.config.maxTokens || 4000,
-    });
+    };
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('Empty response from GPT');
+    // 添加工具
+    if (options?.tools && options.tools.length > 0) {
+      requestParams.tools = options.tools as OpenAI.Chat.ChatCompletionTool[];
+      if (options.tool_choice) {
+        requestParams.tool_choice = options.tool_choice as OpenAI.Chat.ChatCompletionToolChoiceOption;
+      } else {
+        requestParams.tool_choice = 'auto';
+      }
     }
+
+    const response = await this.openai.chat.completions.create(requestParams);
+
+    const message = response.choices[0]?.message;
+    const content = message?.content || '';
+
+    // 处理工具调用
+    const toolCalls = message?.tool_calls?.map(tc => ({
+      id: tc.id,
+      type: 'function' as const,
+      function: {
+        name: tc.function.name,
+        arguments: tc.function.arguments,
+      },
+    }));
 
     return {
       content,
+      toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
       usage: {
         inputTokens: response.usage?.prompt_tokens || 0,
         outputTokens: response.usage?.completion_tokens || 0,

@@ -97,7 +97,7 @@ export async function createMCPServer(config: ServerConfig) {
     },
     {
       name: 'write_to_file',
-      description: '写入文件（支持 dry-run 预览 diff）',
+      description: '写入文件（支持 dry-run 预览 diff）。【重要】修改 WebGAL 场景脚本（.txt）后，必须立即调用 validate_script 检查语法错误！',
       inputSchema: {
         type: 'object',
         properties: {
@@ -112,7 +112,7 @@ export async function createMCPServer(config: ServerConfig) {
     },
     {
       name: 'replace_in_file',
-      description: '在文件中查找并替换文本',
+      description: '在文件中查找并替换文本。【重要】修改 WebGAL 场景脚本后，必须立即调用 validate_script 检查语法！',
       inputSchema: {
         type: 'object',
         properties: {
@@ -140,7 +140,7 @@ export async function createMCPServer(config: ServerConfig) {
     },
     {
       name: 'validate_script',
-      description: '校验 WebGAL 脚本语法和资源引用',
+      description: '【必用工具】校验 WebGAL 脚本语法和资源引用。在 write_to_file 或 replace_in_file 修改场景脚本后必须调用此工具！',
       inputSchema: {
         type: 'object',
         properties: {

@@ -33,7 +33,10 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "cli": "tsx src/cli.ts",
-    "cli:help": "tsx src/cli.ts --help"
+    "cli:help": "tsx src/cli.ts --help",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
@@ -43,7 +46,9 @@
     "openai": "^4.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^2.1.0",
+    "@vitest/coverage-v8": "^2.1.0"
   }
 }
 
