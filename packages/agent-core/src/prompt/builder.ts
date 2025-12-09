@@ -3,16 +3,16 @@
  */
 
 export interface PromptContext {
-  projectRoot: string;
+  projectRoot: string
   resources?: {
-    backgrounds: string[];
-    figures: string[];
-    bgm: string[];
-    vocals: string[];
-    scenes: string[];
-  };
-  currentScene?: string;
-  goal?: string;
+    backgrounds: string[]
+    figures: string[]
+    bgm: string[]
+    vocals: string[]
+    scenes: string[]
+  }
+  currentScene?: string
+  goal?: string
 }
 
 export class PromptBuilder {
@@ -38,7 +38,7 @@ BGM：${context.resources.bgm.join(', ')}
 重要：
 1. 只能使用上述列出的已有资源！如资源缺失，请明确指出缺失清单而不是编造。
 2. 脚本中引用资源时只需使用文件名，无需包含目录路径（如 changeBg:bg1.jpg 而不是 game/background/bg1.jpg）。`
-      : '';
+      : ''
 
     return `你是一名WebGAL剧本创作助手。你的任务是将用户需求转化为可运行的WebGAL脚本。
 
@@ -64,7 +64,7 @@ WebGAL语法规则（务必遵守）：
 4. 确保语法正确，所有资源都存在
 5. 如有缺失资源，明确列出清单
 
-只输出WebGAL脚本，不要添加额外解释。`;
+只输出WebGAL脚本，不要添加额外解释。`
   }
 
   /**
@@ -81,7 +81,7 @@ BGM：${context.resources.bgm.join(', ')}
 - 场景文件路径格式：game/scene/场景名.txt（必需完整路径）
 - 资源引用格式：直接使用文件名（不要包含目录，如 bg1.jpg）
 `
-      : '路径对齐说明：\n- 场景文件路径格式：game/scene/场景名.txt（必需完整路径）\n- 资源引用格式：直接使用文件名（不要包含目录）\n';
+      : '路径对齐说明：\n- 场景文件路径格式：game/scene/场景名.txt（必需完整路径）\n- 资源引用格式：直接使用文件名（不要包含目录）\n'
 
     return `用户需求：${userRequest}
 
@@ -106,7 +106,7 @@ ${resourceHint}
   ],
   "total_scenes": 场景总数,
   "missing_resources": ["列出所有需要的但不在可用资源列表中的资源"]
-}`;
+}`
   }
 
   /**
@@ -114,13 +114,13 @@ ${resourceHint}
    */
   buildScriptPrompt(
     sceneInfo: {
-      file: string;
-      background: string;
-      characters: string[];
-      summary: string;
-      previousContext?: string;
+      file: string
+      background: string
+      characters: string[]
+      summary: string
+      previousContext?: string
     },
-    context: PromptContext
+    context: PromptContext,
   ): string {
     const resourceCheck = context.resources
       ? `可用资源（选择并使用，只写文件名）：
@@ -133,7 +133,7 @@ BGM：${context.resources.bgm.join(', ')}
 - 背景：changeBg:文件名; （示例：changeBg:bg1.jpg）
 - BGM：bgm:文件名; （示例：bgm:music.mp3）
 - 跳转到场景：game/scene/场景名.txt （示例：choose:选项1:game/scene/chapter2.txt）`
-      : '';
+      : ''
 
     return `生成WebGAL脚本：${sceneInfo.file}
 
@@ -151,7 +151,7 @@ ${resourceCheck}
 3. 需要连续执行的地方添加 -next
 4. 分支要确保收束，要有明确的跳转路径 game/scene/xxx.txt
 5. 只输出脚本内容，不要任何解释
-6. 检查所有资源引用是否正确，确保文件名存在于可用资源列表中`;
+6. 检查所有资源引用是否正确，确保文件名存在于可用资源列表中`
   }
 
   /**
@@ -160,15 +160,15 @@ ${resourceCheck}
   buildFixPrompt(
     content: string,
     diagnostics: Array<{
-      line: number;
-      kind: 'syntax' | 'resource' | 'style';
-      message: string;
-      fixHint?: string;
-    }>
+      line: number
+      kind: 'syntax' | 'resource' | 'style'
+      message: string
+      fixHint?: string
+    }>,
   ): string {
     const errors = diagnostics
-      .map(d => `第${d.line}行: ${d.message}${d.fixHint ? ` (${d.fixHint})` : ''}`)
-      .join('\n');
+      .map((d) => `第${d.line}行: ${d.message}${d.fixHint ? ` (${d.fixHint})` : ''}`)
+      .join('\n')
 
     return `修复以下WebGAL脚本的错误：
 
@@ -182,7 +182,7 @@ ${errors}
 1. 所有语法错误已修正
 2. 资源引用正确
 3. 每条语句以分号结尾
-4. 只输出修复后的脚本，不要添加解释`;
+4. 只输出修复后的脚本，不要添加解释`
   }
 
   /**
@@ -203,7 +203,7 @@ ${errors}
   "bgm": ["..."],
   "vocals": ["..."],
   "scenes": ["..."]
-}`;
+}`
   }
 
   /**
@@ -212,6 +212,6 @@ ${errors}
   buildFollowUpPrompt(question: string): string {
     return `用户需要澄清：${question}
 
-请用中文友好地提问，帮助明确需求。`;
+请用中文友好地提问，帮助明确需求。`
   }
 }

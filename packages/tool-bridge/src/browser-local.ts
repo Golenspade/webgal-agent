@@ -1,54 +1,91 @@
 /**
  * 浏览器本地访问控制
  * 严格按照 CONTRACTS.md 4.2 browser_action 规范
+ *
+ * TS 5.0+ 特性:
+ * - 使用 satisfies 操作符确保类型安全
+ * - 使用 switch(true) 进行类型收窄
+ * - 使用 as const 保留字面量类型
  */
 
-import { ErrorCode } from './fs-sandbox.js';
+import { ErrorCode, type ToolError } from './fs-sandbox.js'
 
 /**
  * 浏览器配置
  */
 export interface BrowserConfig {
   /** 是否启用浏览器功能 */
-  enabled: boolean;
+  enabled: boolean
   /** 允许的主机列表 */
-  allowedHosts: string[];
+  allowedHosts: readonly string[]
   /** 截图保存目录 */
-  screenshotDir: string;
+  screenshotDir: string
   /** 超时时间（毫秒） */
-  timeoutMs: number;
+  timeoutMs: number
 }
 
 /**
  * 浏览器动作类型
+ * TS 5.0+: 使用 as const 定义动作常量
  */
-export type BrowserAction = 'open' | 'click' | 'screenshot';
+export const BROWSER_ACTIONS = ['open', 'click', 'screenshot'] as const
+export type BrowserAction = (typeof BROWSER_ACTIONS)[number]
 
 /**
  * 浏览器动作请求
  */
 export interface BrowserActionRequest {
-  action: BrowserAction;
-  url?: string;
-  selector?: string;
-  path?: string;
+  action: BrowserAction
+  url?: string
+  selector?: string
+  path?: string
 }
 
 /**
  * 浏览器动作结果
  */
 export interface BrowserActionResult {
-  ok: boolean;
+  ok: boolean
+}
+
+/**
+ * 创建工具错误
+ * TS 5.0+: 使用 satisfies 确保返回类型正确
+ */
+function createToolError(
+  code: ErrorCode,
+  message: string,
+  details?: Record<string, unknown>,
+  hint?: string,
+  recoverable = false,
+): ToolError {
+  return {
+    error: {
+      code,
+      message,
+      details,
+      hint,
+      recoverable,
+    },
+  } satisfies ToolError
+}
+
+/**
+ * 检查是否为有效的浏览器动作
+ * TS 5.5+: 自动推断类型谓词
+ */
+export function isValidBrowserAction(action: string): action is BrowserAction {
+  return BROWSER_ACTIONS.includes(action as BrowserAction)
 }
 
 /**
  * 浏览器控制器类
  */
 export class BrowserController {
-  private config: BrowserConfig;
+  private readonly config: BrowserConfig
 
   constructor(config: BrowserConfig) {
-    this.config = config;
+    this.config = config
   }
 
   /**
@@ -58,139 +95,139 @@ export class BrowserController {
    */
   validateUrl(url: string): void {
     if (!this.config.enabled) {
-      throw {
-        error: {
-          code: ErrorCode.E_TOOL_DISABLED,
-          message: 'Browser actions are disabled',
-          hint: 'Enable browser in policies.json',
-          recoverable: false,
-        },
-      };
+      throw createToolError(
+        ErrorCode.E_TOOL_DISABLED,
+        'Browser actions are disabled',
+        undefined,
+        'Enable browser in policies.json',
+        false,
+      )
     }
 
-    let parsedUrl: URL;
+    let parsedUrl: URL
     try {
-      parsedUrl = new URL(url);
-    } catch (err) {
-      throw {
-        error: {
-          code: ErrorCode.E_BAD_ARGS,
-          message: `Invalid URL: ${url}`,
-          details: { url },
-          hint: 'Provide a valid URL',
-          recoverable: true,
-        },
-      };
+      parsedUrl = new URL(url)
+    } catch {
+      throw createToolError(
+        ErrorCode.E_BAD_ARGS,
+        `Invalid URL: ${url}`,
+        { url },
+        'Provide a valid URL',
+        true,
+      )
     }
 
     // 检查协议
     if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-      throw {
-        error: {
-          code: ErrorCode.E_POLICY_VIOLATION,
-          message: `Only HTTP/HTTPS protocols are allowed: ${parsedUrl.protocol}`,
-          details: { url, protocol: parsedUrl.protocol },
-          hint: 'Use http:// or https:// URLs',
-          recoverable: false,
-        },
-      };
+      throw createToolError(
+        ErrorCode.E_POLICY_VIOLATION,
+        `Only HTTP/HTTPS protocols are allowed: ${parsedUrl.protocol}`,
+        { url, protocol: parsedUrl.protocol },
+        'Use http:// or https:// URLs',
+        false,
+      )
     }
 
     // 检查主机名
-    const hostname = parsedUrl.hostname;
-    const isAllowed = this.config.allowedHosts.some(allowed => {
-      // 精确匹配或通配符匹配
-      if (allowed === hostname) return true;
-      if (allowed === 'localhost' && (hostname === 'localhost' || hostname === '127.0.0.1')) return true;
-      if (allowed === '127.0.0.1' && (hostname === 'localhost' || hostname === '127.0.0.1')) return true;
-      return false;
-    });
+    const hostname = parsedUrl.hostname
+    const isAllowed = this.config.allowedHosts.some((allowed) => {
+      // TS 5.3+: switch(true) 类型收窄
+      switch (true) {
+        case allowed === hostname:
+          return true
+        case allowed === 'localhost' && (hostname === 'localhost' || hostname === '127.0.0.1'):
+          return true
+        case allowed === '127.0.0.1' && (hostname === 'localhost' || hostname === '127.0.0.1'):
+          return true
+        default:
+          return false
+      }
+    })
 
     if (!isAllowed) {
-      throw {
-        error: {
-          code: ErrorCode.E_POLICY_VIOLATION,
-          message: `Host not in whitelist: ${hostname}`,
-          details: {
-            url,
-            hostname,
-            allowedHosts: this.config.allowedHosts
-          },
-          hint: `Only these hosts are allowed: ${this.config.allowedHosts.join(', ')}`,
-          recoverable: false,
+      throw createToolError(
+        ErrorCode.E_POLICY_VIOLATION,
+        `Host not in whitelist: ${hostname}`,
+        {
+          url,
+          hostname,
+          allowedHosts: [...this.config.allowedHosts],
         },
-      };
+        `Only these hosts are allowed: ${this.config.allowedHosts.join(', ')}`,
+        false,
+      )
     }
   }
 
   /**
    * 验证浏览器动作请求
+   * TS 5.3+: 使用 switch(true) 进行更清晰的条件检查
    * @param request 动作请求
    */
   validateRequest(request: BrowserActionRequest): void {
     if (!this.config.enabled) {
-      throw {
-        error: {
-          code: ErrorCode.E_TOOL_DISABLED,
-          message: 'Browser actions are disabled',
-          hint: 'Enable browser in policies.json',
-          recoverable: false,
-        },
-      };
+      throw createToolError(
+        ErrorCode.E_TOOL_DISABLED,
+        'Browser actions are disabled',
+        undefined,
+        'Enable browser in policies.json',
+        false,
+      )
     }
 
     // 根据动作类型验证必需参数
     switch (request.action) {
-      case 'open':
+      case 'open': {
         if (!request.url) {
-          throw {
-            error: {
-              code: ErrorCode.E_BAD_ARGS,
-              message: 'URL is required for open action',
-              hint: 'Provide a url parameter',
-              recoverable: true,
-            },
-          };
+          throw createToolError(
+            ErrorCode.E_BAD_ARGS,
+            'URL is required for open action',
+            undefined,
+            'Provide a url parameter',
+            true,
+          )
         }
-        this.validateUrl(request.url);
-        break;
+        this.validateUrl(request.url)
+        break
+      }
 
-      case 'click':
+      case 'click': {
         if (!request.selector) {
-          throw {
-            error: {
-              code: ErrorCode.E_BAD_ARGS,
-              message: 'Selector is required for click action',
-              hint: 'Provide a selector parameter',
-              recoverable: true,
-            },
-          };
+          throw createToolError(
+            ErrorCode.E_BAD_ARGS,
+            'Selector is required for click action',
+            undefined,
+            'Provide a selector parameter',
+            true,
+          )
         }
-        break;
+        break
+      }
 
-      case 'screenshot':
+      case 'screenshot': {
         if (!request.path) {
-          throw {
-            error: {
-              code: ErrorCode.E_BAD_ARGS,
-              message: 'Path is required for screenshot action',
-              hint: 'Provide a path parameter',
-              recoverable: true,
-            },
-          };
+          throw createToolError(
+            ErrorCode.E_BAD_ARGS,
+            'Path is required for screenshot action',
+            undefined,
+            'Provide a path parameter',
+            true,
+          )
         }
-        break;
+        break
+      }
 
-      default:
-        throw {
-          error: {
-            code: ErrorCode.E_BAD_ARGS,
-            message: `Unknown browser action: ${request.action}`,
-            details: { action: request.action },
-            hint: 'Use one of: open, click, screenshot',
-            recoverable: true,
-          },
-        };
+      default: {
+        // TS 5.0+: exhaustive check - 如果添加新动作会在编译时报错
+        const _exhaustive: never = request.action
+        throw createToolError(
+          ErrorCode.E_BAD_ARGS,
+          `Unknown browser action: ${_exhaustive}`,
+          { action: request.action },
+          `Use one of: ${BROWSER_ACTIONS.join(', ')}`,
+          true,
+        )
+      }
     }
   }
 
@@ -198,16 +235,16 @@ export class BrowserController {
    * 获取配置
    */
   getConfig(): Readonly<BrowserConfig> {
-    return { ...this.config };
+    return { ...this.config }
   }
 }
 
 /**
  * 默认浏览器配置
+ * TS 5.0+: 使用 satisfies 确保类型安全同时保留字面量类型
  */
-export const DEFAULT_BROWSER_CONFIG: Omit<BrowserConfig, 'screenshotDir'> = {
+export const DEFAULT_BROWSER_CONFIG = {
   enabled: false,
-  allowedHosts: ['localhost', '127.0.0.1'],
+  allowedHosts: ['localhost', '127.0.0.1'] as const,
   timeoutMs: 30000,
-};
-
+} satisfies Omit<BrowserConfig, 'screenshotDir'>

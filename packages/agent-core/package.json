@@ -46,9 +46,8 @@
     "openai": "^4.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
+    "typescript": "^5.8.3",
     "vitest": "^2.1.0",
     "@vitest/coverage-v8": "^2.1.0"
   }
 }
-

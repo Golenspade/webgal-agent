@@ -4,23 +4,23 @@
  * 通过 stdio 暴露工具集，符合 Model Context Protocol 规范
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
   Tool,
-} from '@modelcontextprotocol/sdk/types.js';
-import { WebGALAgentTools } from '@webgal-agent/agent-core/tools';
-import type { ResolvedConfig } from './config.js';
-import { checkLock } from './lock-manager.js';
+} from '@modelcontextprotocol/sdk/types.js'
+import { WebGALAgentTools } from '@webgal-agent/agent-core/tools'
+import type { ResolvedConfig } from './config.js'
+import { checkLock } from './lock-manager.js'
 
 export interface ServerConfig extends ResolvedConfig {
-  projectRoot: string;
-  policiesPath?: string;
-  verbose?: boolean;
+  projectRoot: string
+  policiesPath?: string
+  verbose?: boolean
 }
 
 /**
@@ -28,15 +28,20 @@ export interface ServerConfig extends ResolvedConfig {
  */
 export async function createMCPServer(config: ServerConfig) {
   // 结构化日志工具
-  const log = (level: 'INFO'|'ERROR'|'DEBUG', component: string, message: string, data?: Record<string, unknown>) => {
-    const entry: any = { ts: new Date().toISOString(), level, component, message };
-    if (data) entry.data = data;
+  const log = (
+    level: 'INFO' | 'ERROR' | 'DEBUG',
+    component: string,
+    message: string,
+    data?: Record<string, unknown>,
+  ) => {
+    const entry: any = { ts: new Date().toISOString(), level, component, message }
+    if (data) entry.data = data
     try {
-      console.error(JSON.stringify(entry));
+      console.error(JSON.stringify(entry))
     } catch {
-      console.error(`[${level}] [${component}] ${message}`);
+      console.error(`[${level}] [${component}] ${message}`)
     }
-  };
+  }
 
   const server = new Server(
     {
@@ -48,8 +53,8 @@ export async function createMCPServer(config: ServerConfig) {
         tools: {},
         prompts: {},
       },
-    }
-  );
+    },
+  )
 
   // 初始化 WebGAL Agent Tools（使用已合并的配置）
   const tools = new WebGALAgentTools({
@@ -62,7 +67,7 @@ export async function createMCPServer(config: ServerConfig) {
     browser: config.browser,
     snapshotRetention: config.snapshotRetention,
     idempotency: config.idempotency,
-  });
+  })
 
   // 定义工具列表
   const toolDefinitions: Tool[] = [
@@ -97,13 +102,18 @@ export async function createMCPServer(config: ServerConfig) {
     },
     {
       name: 'write_to_file',
-      description: '写入文件（支持 dry-run 预览 diff）。【重要】修改 WebGAL 场景脚本（.txt）后，必须立即调用 validate_script 检查语法错误！',
+      description:
+        '写入文件（支持 dry-run 预览 diff）。【重要】修改 WebGAL 场景脚本（.txt）后，必须立即调用 validate_script 检查语法错误！',
       inputSchema: {
         type: 'object',
         properties: {
           path: { type: 'string', description: '相对于项目根的文件路径' },
           content: { type: 'string', description: '文件内容' },
-          mode: { type: 'string', enum: ['overwrite', 'append'], description: '写入模式（默认 overwrite）' },
+          mode: {
+            type: 'string',
+            enum: ['overwrite', 'append'],
+            description: '写入模式（默认 overwrite）',
+          },
           dryRun: { type: 'boolean', description: 'true=仅返回 diff，false=实际写入' },
           idempotencyKey: { type: 'string', description: '幂等性键（可选）' },
         },
@@ -112,7 +122,8 @@ export async function createMCPServer(config: ServerConfig) {
     },
     {
       name: 'replace_in_file',
-      description: '在文件中查找并替换文本。【重要】修改 WebGAL 场景脚本后，必须立即调用 validate_script 检查语法！',
+      description:
+        '在文件中查找并替换文本。【重要】修改 WebGAL 场景脚本后，必须立即调用 validate_script 检查语法！',
       inputSchema: {
         type: 'object',
         properties: {
@@ -140,7 +151,8 @@ export async function createMCPServer(config: ServerConfig) {
     },
     {
       name: 'validate_script',
-      description: '【必用工具】校验 WebGAL 脚本语法和资源引用。在 write_to_file 或 replace_in_file 修改场景脚本后必须调用此工具！',
+      description:
+        '【必用工具】校验 WebGAL 脚本语法和资源引用。在 write_to_file 或 replace_in_file 修改场景脚本后必须调用此工具！',
       inputSchema: {
         type: 'object',
         properties: {
@@ -227,10 +239,10 @@ export async function createMCPServer(config: ServerConfig) {
         properties: {},
       },
     },
-  ];
+  ]
   // Verbose: report registered tools count
   if (config.verbose) {
-    log('INFO', 'MCP', 'tools registered', { count: toolDefinitions.length });
+    log('INFO', 'MCP', 'tools registered', { count: toolDefinitions.length })
   }
 
   // ===== Prompts capability =====
@@ -247,7 +259,11 @@ export async function createMCPServer(config: ServerConfig) {
       description: 'Refactor or improve an existing WebGAL scene file',
       arguments: [
         { name: 'path', description: 'Scene file path under game/scene', required: true },
-        { name: 'goal', description: 'Refactor goal, e.g., add -next, adjust pacing', required: false },
+        {
+          name: 'goal',
+          description: 'Refactor goal, e.g., add -next, adjust pacing',
+          required: false,
+        },
       ],
     },
     {
@@ -255,10 +271,14 @@ export async function createMCPServer(config: ServerConfig) {
       description: 'Fix validate_script diagnostics for a given scene',
       arguments: [
         { name: 'path', description: 'Scene file path', required: true },
-        { name: 'diagnostics', description: 'JSON diagnostics array from validate_script', required: false },
+        {
+          name: 'diagnostics',
+          description: 'JSON diagnostics array from validate_script',
+          required: false,
+        },
       ],
     },
-  ] as const;
+  ] as const
 
   server.setRequestHandler(ListPromptsRequestSchema, async () => ({
     prompts: promptRegistry.map((p) => ({
@@ -266,133 +286,172 @@ export async function createMCPServer(config: ServerConfig) {
       description: p.description,
       arguments: p.arguments,
     })),
-  }));
+  }))
 
   server.setRequestHandler(GetPromptRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params as any;
+    const { name, arguments: args } = request.params as any
     const notFound = () => {
-      throw new Error(`Unknown prompt: ${name}`);
-    };
+      throw new Error(`Unknown prompt: ${name}`)
+    }
 
     switch (name) {
       case 'webgal.create_scene': {
-        const sceneName = args?.sceneName || 'new_scene.txt';
+        const sceneName = args?.sceneName || 'new_scene.txt'
         return {
           description: 'Create a WebGAL scene script',
           messages: [
             {
               role: 'system',
-              content: { type: 'text', text: 'You are a WebGAL script assistant. Output only valid WebGAL lines using English colon and semicolon.' },
+              content: {
+                type: 'text',
+                text: 'You are a WebGAL script assistant. Output only valid WebGAL lines using English colon and semicolon.',
+              },
             },
             {
               role: 'user',
-              content: { type: 'text', text: `Create scene ${sceneName} with minimal dialogue and proper -next usage where needed.` },
+              content: {
+                type: 'text',
+                text: `Create scene ${sceneName} with minimal dialogue and proper -next usage where needed.`,
+              },
             },
           ],
-        };
+        }
       }
       case 'webgal.refactor_scene': {
-        const path = args?.path || 'game/scene/start.txt';
-        const goal = args?.goal || 'improve pacing and add -next after stage changes';
+        const path = args?.path || 'game/scene/start.txt'
+        const goal = args?.goal || 'improve pacing and add -next after stage changes'
         return {
           description: 'Refactor WebGAL scene',
           messages: [
-            { role: 'system', content: { type: 'text', text: 'You are a WebGAL refactoring assistant. Keep syntax valid and minimal changes.' } },
-            { role: 'user', content: { type: 'text', text: `Refactor ${path}. Goal: ${goal}. Show a suggested patch or replacement lines.` } },
+            {
+              role: 'system',
+              content: {
+                type: 'text',
+                text: 'You are a WebGAL refactoring assistant. Keep syntax valid and minimal changes.',
+              },
+            },
+            {
+              role: 'user',
+              content: {
+                type: 'text',
+                text: `Refactor ${path}. Goal: ${goal}. Show a suggested patch or replacement lines.`,
+              },
+            },
           ],
-        };
+        }
       }
       case 'webgal.fix_validation': {
-        const path = args?.path || 'game/scene/start.txt';
-        const diagnostics = args?.diagnostics ? JSON.stringify(args.diagnostics) : '[]';
+        const path = args?.path || 'game/scene/start.txt'
+        const diagnostics = args?.diagnostics ? JSON.stringify(args.diagnostics) : '[]'
         return {
           description: 'Fix validation diagnostics',
           messages: [
-            { role: 'system', content: { type: 'text', text: 'You fix WebGAL validation issues: semicolons, allowed commands, resource existence.' } },
-            { role: 'user', content: { type: 'text', text: `File: ${path}\nDiagnostics: ${diagnostics}\nReturn corrected lines only.` } },
+            {
+              role: 'system',
+              content: {
+                type: 'text',
+                text: 'You fix WebGAL validation issues: semicolons, allowed commands, resource existence.',
+              },
+            },
+            {
+              role: 'user',
+              content: {
+                type: 'text',
+                text: `File: ${path}\nDiagnostics: ${diagnostics}\nReturn corrected lines only.`,
+              },
+            },
           ],
-        };
+        }
       }
       default:
-        return notFound();
+        return notFound()
     }
-  });
-
+  })
 
   // 注册 list_tools 处理器
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: toolDefinitions,
-  }));
+  }))
 
   // 注册 call_tool 处理器
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
-    const opId = `op_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    const started = Date.now();
+    const { name, arguments: args } = request.params
+    const opId = `op_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+    const started = Date.now()
     const withTimeout = async <T>(p: Promise<T>, timeoutMs = 30000): Promise<T> => {
       return await Promise.race([
         p,
-        new Promise<T>((_, reject) => setTimeout(() => reject({
-          error: { code: 'E_TIMEOUT', message: `Operation timed out: ${name}`, details: { timeoutMs, opId } }
-        }), timeoutMs))
-      ]);
-    };
+        new Promise<T>((_, reject) =>
+          setTimeout(
+            () =>
+              reject({
+                error: {
+                  code: 'E_TIMEOUT',
+                  message: `Operation timed out: ${name}`,
+                  details: { timeoutMs, opId },
+                },
+              }),
+            timeoutMs,
+          ),
+        ),
+      ])
+    }
 
     try {
-      let result: any;
+      let result: any
 
       switch (name) {
         case 'list_files':
-          log('INFO', 'tool', 'start', { opId, name });
-          result = await withTimeout(tools.listFiles(args as any));
-          break;
+          log('INFO', 'tool', 'start', { opId, name })
+          result = await withTimeout(tools.listFiles(args as any))
+          break
         case 'read_file':
-          log('INFO', 'tool', 'start', { opId, name });
-          result = await withTimeout(tools.readFile(args as any));
-          break;
+          log('INFO', 'tool', 'start', { opId, name })
+          result = await withTimeout(tools.readFile(args as any))
+          break
         case 'write_to_file':
-          log('INFO', 'tool', 'start', { opId, name });
-          result = await withTimeout(tools.writeToFile(args as any));
-          break;
+          log('INFO', 'tool', 'start', { opId, name })
+          result = await withTimeout(tools.writeToFile(args as any))
+          break
         case 'replace_in_file':
-          log('INFO', 'tool', 'start', { opId, name });
-          result = await withTimeout(tools.replaceInFile(args as any));
-          break;
+          log('INFO', 'tool', 'start', { opId, name })
+          result = await withTimeout(tools.replaceInFile(args as any))
+          break
         case 'search_files':
-          log('INFO', 'tool', 'start', { opId, name });
-          result = await withTimeout(tools.searchFiles(args as any), 45000);
-          break;
+          log('INFO', 'tool', 'start', { opId, name })
+          result = await withTimeout(tools.searchFiles(args as any), 45000)
+          break
         case 'validate_script':
-          log('INFO', 'tool', 'start', { opId, name });
-          result = await withTimeout(tools.validateScript(args as any));
-          break;
+          log('INFO', 'tool', 'start', { opId, name })
+          result = await withTimeout(tools.validateScript(args as any))
+          break
         case 'list_project_resources':
-          log('INFO', 'tool', 'start', { opId, name });
-          result = await withTimeout(tools.listProjectResources());
-          break;
+          log('INFO', 'tool', 'start', { opId, name })
+          result = await withTimeout(tools.listProjectResources())
+          break
         case 'list_snapshots':
-          log('INFO', 'tool', 'start', { opId, name });
-          result = await withTimeout(tools.listSnapshots(args as any));
-          break;
+          log('INFO', 'tool', 'start', { opId, name })
+          result = await withTimeout(tools.listSnapshots(args as any))
+          break
         case 'restore_snapshot':
-          log('INFO', 'tool', 'start', { opId, name });
-          result = await withTimeout(tools.restoreSnapshot(args as any));
-          break;
+          log('INFO', 'tool', 'start', { opId, name })
+          result = await withTimeout(tools.restoreSnapshot(args as any))
+          break
         case 'preview_scene':
-          log('INFO', 'tool', 'start', { opId, name });
-          result = await withTimeout(tools.previewScene(args as any), 60000);
-          break;
+          log('INFO', 'tool', 'start', { opId, name })
+          result = await withTimeout(tools.previewScene(args as any), 60000)
+          break
         case 'ask_followup_question':
-          log('INFO', 'tool', 'start', { opId, name });
-          result = await withTimeout(tools.askFollowupQuestion(args as any));
-          break;
+          log('INFO', 'tool', 'start', { opId, name })
+          result = await withTimeout(tools.askFollowupQuestion(args as any))
+          break
         case 'attempt_completion':
-          log('INFO', 'tool', 'start', { opId, name });
-          result = await withTimeout(tools.attemptCompletion(args as any));
-          break;
+          log('INFO', 'tool', 'start', { opId, name })
+          result = await withTimeout(tools.attemptCompletion(args as any))
+          break
         case 'get_runtime_info':
           // 直接在 MCP 层返回运行时信息（不涉及工具层）
-          const lock = await checkLock(config.projectRoot);
+          const lock = await checkLock(config.projectRoot)
           result = {
             projectRoot: config.projectRoot,
             snapshotRetention: config.snapshotRetention,
@@ -415,7 +474,9 @@ export async function createMCPServer(config: ServerConfig) {
                 enabled: true,
                 allowedHosts: config.browser.allowedHosts,
                 timeoutMs: config.browser.timeoutMs,
-                ...(config.browser.screenshotDir && { screenshotDir: config.browser.screenshotDir }),
+                ...(config.browser.screenshotDir && {
+                  screenshotDir: config.browser.screenshotDir,
+                }),
               },
             }),
             ...(lock && { lock }),
@@ -424,14 +485,14 @@ export async function createMCPServer(config: ServerConfig) {
               name: 'webgal-agent-mcpserver',
               version: '0.1.0',
             },
-          };
-          break;
+          }
+          break
         default:
-          throw new Error(`Unknown tool: ${name}`);
+          throw new Error(`Unknown tool: ${name}`)
       }
 
-      const duration = Date.now() - started;
-      log('INFO', 'tool', 'success', { opId, name, durationMs: duration });
+      const duration = Date.now() - started
+      log('INFO', 'tool', 'success', { opId, name, durationMs: duration })
       return {
         content: [
           {
@@ -439,21 +500,27 @@ export async function createMCPServer(config: ServerConfig) {
             text: JSON.stringify(result, null, 2),
           },
         ],
-      };
+      }
     } catch (error: any) {
-      const duration = Date.now() - started;
-      log('ERROR', 'tool', 'error', { opId, name, durationMs: duration, error: (error?.error || error)?.message || String(error) });
+      const duration = Date.now() - started
+      log('ERROR', 'tool', 'error', {
+        opId,
+        name,
+        durationMs: duration,
+        error: (error?.error || error)?.message || String(error),
+      })
       // 统一错误处理：符合 CONTRACTS.md 错误模型
-      const toolError = (error && error.error)
-        ? error
-        : {
-            error: {
-              code: 'E_INTERNAL' as any,
-              message: error?.message || 'Internal error',
-              details: error?.stack,
-              opId,
-            },
-          };
+      const toolError =
+        error && error.error
+          ? error
+          : {
+              error: {
+                code: 'E_INTERNAL' as any,
+                message: error?.message || 'Internal error',
+                details: error?.stack,
+                opId,
+              },
+            }
 
       return {
         content: [
@@ -463,21 +530,21 @@ export async function createMCPServer(config: ServerConfig) {
           },
         ],
         isError: true,
-      };
+      }
     }
-  });
+  })
 
-  return server;
+  return server
 }
 
 /**
  * 启动 stdio 服务器
  */
 export async function startServer(config: ServerConfig) {
-  const server = await createMCPServer(config);
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  const server = await createMCPServer(config)
+  const transport = new StdioServerTransport()
+  await server.connect(transport)
 
   // 启动信息已在 bin.ts 中输出，这里仅保留协议层日志
-  console.error(`[MCP] ready (stdio)`);
+  console.error(`[MCP] ready (stdio)`)
 }

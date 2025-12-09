@@ -3,15 +3,23 @@
   "private": true,
   "version": "0.0.0",
   "description": "WebGAL Agent monorepo (workspaces)",
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "yarn@1.22.22",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "build": "echo build:stub",
-    "dev": "echo dev:stub",
-    "lint": "echo lint:stub",
-    "test": "echo test:stub",
+    "build": "yarn workspace @webgal-agent/tool-bridge build && yarn workspace @webgal-agent/agent-core build && yarn workspace @webgal-agent/mcpserver build",
+    "dev": "yarn workspace @webgal-agent/mcpserver dev",
+    "lint": "eslint 'packages/*/src/**/*.ts' --fix",
+    "lint:check": "eslint 'packages/*/src/**/*.ts'",
+    "test": "yarn workspace @webgal-agent/agent-core test",
+    "clean": "yarn workspace @webgal-agent/tool-bridge clean && yarn workspace @webgal-agent/agent-core clean",
+    "format": "prettier --write 'packages/*/src/**/*.ts'",
+    "format:check": "prettier --check 'packages/*/src/**/*.ts'",
     "mcp:start": "yarn workspace @webgal-agent/mcpserver start --project .",
     "mcp:dev": "yarn workspace @webgal-agent/mcpserver start --project . --enable-exec",
     "mcp:sandbox": "yarn workspace @webgal-agent/mcpserver start --project . --policies ./configs/policies.json",
@@ -22,7 +30,13 @@
     "openai": "^4.0.0"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^8.10.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "^2.8.8",
     "tsx": "^4.20.6",
-    "typescript": "^5.0.0"
+    "typescript": "^5.8.3"
   }
 }

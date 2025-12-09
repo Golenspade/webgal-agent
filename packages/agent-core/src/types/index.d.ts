@@ -1,20 +1,25 @@
 /**
  * 类型定义 - 严格按照 CONTRACTS.md 的 JSON Schema
+ *
+ * TS 5.0+ 特性:
+ * - 使用 type 导入修饰符
+ * - 使用 readonly 修饰符增强不变性
+ * - 使用 satisfies 模式的类型约束
  */
 
-import { ErrorCode } from '@webgal-agent/tool-bridge';
+import type { ErrorCode } from '@webgal-agent/tool-bridge'
 
 /**
  * 统一错误结构（CONTRACTS.md 0.2）
  */
 export interface ToolError {
-  error: {
-    code: ErrorCode;
-    message: string;
-    details?: Record<string, unknown>;
-    hint?: string;
-    recoverable?: boolean;
-  };
+  readonly error: {
+    readonly code: ErrorCode
+    readonly message: string
+    readonly details?: Readonly<Record<string, unknown>>
+    readonly hint?: string
+    readonly recoverable?: boolean
+  }
 }
 
 // ============ 1. 基础文件 & 检索工具 ============
@@ -23,94 +28,94 @@ export interface ToolError {
  * 1.1 list_files
  */
 export interface ListFilesRequest {
-  path: string;
-  globs?: string[];
-  dirsOnly?: boolean;
+  readonly path: string
+  readonly globs?: readonly string[]
+  readonly dirsOnly?: boolean
 }
 
 export interface ListFilesResponse {
-  entries: string[];
+  readonly entries: readonly string[]
 }
 
 /**
  * 1.2 read_file
  */
 export interface ReadFileRequest {
-  path: string;
-  maxBytes?: number;
+  readonly path: string
+  readonly maxBytes?: number
 }
 
 export interface ReadFileResponse {
-  path: string;
-  content: string;
-  encoding?: 'utf-8';
-  bytes?: number;
+  readonly path: string
+  readonly content: string
+  readonly encoding?: 'utf-8'
+  readonly bytes?: number
 }
 
 /**
  * 1.3 write_to_file
  */
 export interface WriteToFileRequest {
-  path: string;
-  content: string;
-  mode?: 'overwrite' | 'append';
-  dryRun: boolean;
-  idempotencyKey?: string;
+  readonly path: string
+  readonly content: string
+  readonly mode?: 'overwrite' | 'append'
+  readonly dryRun: boolean
+  readonly idempotencyKey?: string
 }
 
 export interface DiffHunk {
-  startOld: number;
-  lenOld: number;
-  startNew: number;
-  lenNew: number;
-  linesOld: string[];
-  linesNew: string[];
+  readonly startOld: number
+  readonly lenOld: number
+  readonly startNew: number
+  readonly lenNew: number
+  readonly linesOld: readonly string[]
+  readonly linesNew: readonly string[]
 }
 
 export interface Diff {
-  type: 'line';
-  hunks: DiffHunk[];
+  readonly type: 'line'
+  readonly hunks: readonly DiffHunk[]
 }
 
 export interface WriteToFileResponse {
-  applied: boolean;
-  diff?: Diff;
-  snapshotId?: string;
-  bytesWritten?: number;
+  readonly applied: boolean
+  readonly diff?: Diff
+  readonly snapshotId?: string
+  readonly bytesWritten?: number
 }
 
 /**
  * 1.4 replace_in_file
  */
 export interface ReplaceInFileRequest {
-  path: string;
-  find: string;
-  replace: string;
-  flags?: string;
+  readonly path: string
+  readonly find: string
+  readonly replace: string
+  readonly flags?: string
 }
 
 export interface ReplaceInFileResponse {
-  count: number;
+  readonly count: number
 }
 
 /**
  * 1.5 search_files
  */
 export interface SearchFilesRequest {
-  path: string;
-  regex: string;
-  filePattern?: string;
-  maxMatches?: number;
+  readonly path: string
+  readonly regex: string
+  readonly filePattern?: string
+  readonly maxMatches?: number
 }
 
 export interface SearchMatch {
-  path: string;
-  line: number;
-  preview: string;
+  readonly path: string
+  readonly line: number
+  readonly preview: string
 }
 
 export interface SearchFilesResponse {
-  matches: SearchMatch[];
+  readonly matches: readonly SearchMatch[]
 }
 
 // ============ 2. WebGAL 专用工具 ============
@@ -119,89 +124,95 @@ export interface SearchFilesResponse {
  * 2.1 list_project_resources
  */
 export interface ListProjectResourcesResponse {
-  backgrounds: string[];
-  figures: string[];
-  bgm: string[];
-  vocals: string[];
-  scenes: string[];
+  backgrounds: string[]
+  figures: string[]
+  bgm: string[]
+  vocals: string[]
+  scenes: string[]
 }
 
 /**
  * 2.2 validate_script
  */
 export interface ValidateScriptRequest {
-  path?: string;
-  content?: string;
+  readonly path?: string
+  readonly content?: string
 }
 
+/**
+ * 诊断类型
+ * TS 5.0+: 使用字面量类型联合
+ */
+export type DiagnosticKind = 'syntax' | 'resource' | 'style'
+
 export interface Diagnostic {
-  line: number;
-  kind: 'syntax' | 'resource' | 'style';
-  message: string;
-  fixHint?: string;
+  line: number
+  kind: DiagnosticKind
+  message: string
+  fixHint?: string
 }
 
 export interface ValidateScriptResponse {
-  valid: boolean;
-  diagnostics: Diagnostic[];
+  valid: boolean
+  diagnostics: Diagnostic[]
 }
 
 /**
  * 2.3 list_snapshots
  */
 export interface ListSnapshotsRequest {
-  limit?: number;
-  path?: string;
+  readonly limit?: number
+  readonly path?: string
 }
 
 export interface SnapshotMetadata {
-  id: string;
-  path: string;
-  timestamp: number;
-  contentHash: string;
-  idempotencyKey?: string;
+  readonly id: string
+  readonly path: string
+  readonly timestamp: number
+  readonly contentHash: string
+  readonly idempotencyKey?: string
 }
 
 export interface ListSnapshotsResponse {
-  snapshots: SnapshotMetadata[];
+  readonly snapshots: readonly SnapshotMetadata[]
 }
 
 /**
  * 2.4 restore_snapshot
  */
 export interface RestoreSnapshotRequest {
-  snapshotId: string;
+  readonly snapshotId: string
 }
 
 export interface RestoreSnapshotResponse {
-  path: string;
-  content: string;
+  readonly path: string
+  readonly content: string
 }
 
 /**
  * 2.5 preview_scene
  */
 export interface PreviewSceneRequest {
-  scenePath?: string;
+  readonly scenePath?: string
 }
 
 export interface PreviewSceneResponse {
-  url: string;
-  logs?: string[];
-  firstErrorLine?: number;
+  readonly url: string
+  readonly logs?: readonly string[]
+  readonly firstErrorLine?: number
 }
 
 /**
  * 2.6 generate_character_profile
  */
 export interface GenerateCharacterProfileRequest {
-  name: string;
-  imageFile: string;
-  defaultExpression?: string;
+  readonly name: string
+  readonly imageFile: string
+  readonly defaultExpression?: string
 }
 
 export interface GenerateCharacterProfileResponse {
-  success: boolean;
+  readonly success: boolean
 }
 
 // ============ 3. 交互与完成信号 ============
@@ -210,50 +221,80 @@ export interface GenerateCharacterProfileResponse {
  * 3.1 ask_followup_question
  */
 export interface AskFollowupQuestionRequest {
-  question: string;
+  readonly question: string
 }
 
 export interface AskFollowupQuestionResponse {
-  ack: boolean;
+  readonly ack: boolean
 }
 
 /**
  * 3.2 attempt_completion
  */
 export interface AttemptCompletionRequest {
-  result: string;
+  readonly result: string
 }
 
 export interface AttemptCompletionResponse {
-  ack: boolean;
+  readonly ack: boolean
 }
 
 // ============ 4. 命令与浏览器 ============
 
 /**
+ * 允许的脚本名称
+ * TS 5.0+: 字面量类型联合
+ */
+export type AllowedScriptName = 'dev' | 'build' | 'lint'
+
+/**
  * 4.1 execute_command
  */
 export interface ExecuteCommandRequest {
-  scriptName: 'dev' | 'build' | 'lint';
-  args?: string[];
+  readonly scriptName: AllowedScriptName
+  readonly args?: readonly string[]
 }
 
 export interface ExecuteCommandResponse {
-  ok: boolean;
-  logs?: string[];
+  readonly ok: boolean
+  readonly logs?: readonly string[]
 }
+
+/**
+ * 浏览器动作类型
+ * TS 5.0+: 字面量类型联合
+ */
+export type BrowserActionType = 'open' | 'click' | 'screenshot'
 
 /**
  * 4.2 browser_action
  */
 export interface BrowserActionRequest {
-  action: 'open' | 'click' | 'screenshot';
-  url?: string;
-  selector?: string;
-  path?: string;
+  readonly action: BrowserActionType
+  readonly url?: string
+  readonly selector?: string
+  readonly path?: string
 }
 
 export interface BrowserActionResponse {
-  ok: boolean;
+  readonly ok: boolean
 }
 
+// ============ 工具类型辅助 ============
+
+/**
+ * 将类型的所有属性变为可写
+ * 用于内部操作时临时解除 readonly
+ */
+export type Mutable<T> = {
+  -readonly [P in keyof T]: T[P]
+}
+
+/**
+ * 深度只读类型
+ */
+export type DeepReadonly<T> = T extends (infer U)[]
+  ? readonly DeepReadonly<U>[]
+  : T extends object
+  ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+  : T

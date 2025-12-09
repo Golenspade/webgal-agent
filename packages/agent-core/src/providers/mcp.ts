@@ -1,3 +1,2 @@
 // MCP client placeholder
 export {}
-
