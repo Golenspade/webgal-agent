@@ -11,8 +11,8 @@ import {
   ListToolsRequestSchema,
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
-  Tool,
 } from '@modelcontextprotocol/sdk/types.js'
+import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import { WebGALAgentTools } from '@webgal-agent/agent-core/tools'
 import type { ResolvedConfig } from './config.js'
 import { checkLock } from './lock-manager.js'

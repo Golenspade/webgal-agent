@@ -17,7 +17,7 @@ import {
 } from './config.js'
 import { acquireLock, registerLockCleanup, checkLock } from './lock-manager.js'
 
-interface CLIArgs extends CliOverrides {
+interface CLIArgs {
   project?: string
   policies?: string
   help?: boolean
@@ -40,6 +40,15 @@ interface CLIArgs extends CliOverrides {
   browserAllowedHosts?: string
   browserTimeout?: number
   browserScreenshotDir?: string
+  // CliOverrides compatible fields (mutable for parsing)
+  snapshotRetention?: number
+  models?: {
+    provider?: string
+    model?: string
+    temperature?: number
+    maxTokens?: number
+    baseURL?: string
+  }
 }
 
 function parseArgs(): CLIArgs {
@@ -60,7 +69,7 @@ function parseArgs(): CLIArgs {
     } else if (arg === '--policies') {
       args.policies = argv[++i]
     } else if (arg === '--retention') {
-      args.snapshotRetention = parseInt(argv[++i], 10)
+      args.snapshotRetention = parseInt(argv[++i] || '', 10)
     } else if (arg === '--enable-exec') {
       args.enableExec = true
     } else if (arg === '--enable-browser') {
@@ -72,7 +81,7 @@ function parseArgs(): CLIArgs {
     else if (arg === '--sandbox-forbidden') {
       args.sandboxForbidden = argv[++i]
     } else if (arg === '--sandbox-max-bytes') {
-      args.sandboxMaxBytes = parseInt(argv[++i], 10)
+      args.sandboxMaxBytes = parseInt(argv[++i] || '', 10)
     } else if (arg === '--sandbox-encoding') {
       args.sandboxEncoding = argv[++i]
     }
@@ -80,7 +89,7 @@ function parseArgs(): CLIArgs {
     else if (arg === '--exec-allowed') {
       args.execAllowed = argv[++i]
     } else if (arg === '--exec-timeout') {
-      args.execTimeout = parseInt(argv[++i], 10)
+      args.execTimeout = parseInt(argv[++i] || '', 10)
     } else if (arg === '--exec-redact-env') {
       args.execRedactEnv = argv[++i]
     } else if (arg === '--exec-workdir') {
@@ -90,7 +99,7 @@ function parseArgs(): CLIArgs {
     else if (arg === '--browser-allowed-hosts') {
       args.browserAllowedHosts = argv[++i]
     } else if (arg === '--browser-timeout') {
-      args.browserTimeout = parseInt(argv[++i], 10)
+      args.browserTimeout = parseInt(argv[++i] || '', 10)
     } else if (arg === '--browser-screenshot-dir') {
       args.browserScreenshotDir = argv[++i]
     }
@@ -100,9 +109,9 @@ function parseArgs(): CLIArgs {
     } else if (arg === '--model-name') {
       args.models = { ...args.models, model: argv[++i] }
     } else if (arg === '--model-temperature') {
-      args.models = { ...args.models, temperature: parseFloat(argv[++i]) }
+      args.models = { ...args.models, temperature: parseFloat(argv[++i] || '') }
     } else if (arg === '--model-max-tokens') {
-      args.models = { ...args.models, maxTokens: parseInt(argv[++i], 10) }
+      args.models = { ...args.models, maxTokens: parseInt(argv[++i] || '', 10) }
     } else if (arg === '--model-base-url') {
       args.models = { ...args.models, baseURL: argv[++i] }
     }
